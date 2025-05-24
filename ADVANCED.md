@@ -101,7 +101,6 @@ The server handles rate limiting gracefully and will report appropriate errors.
 ## Future Enhancements
 
 Planned features for future versions:
-- Repository creation and management
 - Webhook management
 - Advanced search and filtering
 - Bulk operations

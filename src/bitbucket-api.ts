@@ -388,50 +388,6 @@ export class BitbucketAPI {
     };
   }
 
-  async createRepository(workspace: string, repoData: {
-    name: string;
-    description?: string;
-    is_private?: boolean;
-    language?: string;
-    has_issues?: boolean;
-    has_wiki?: boolean;
-    fork_policy?: string;
-    scm?: string;
-  }): Promise<Repository> {
-    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoData.name}`;
-    
-    const response = await this.makeRequest<Repository>(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(repoData),
-    });
-    
-    return response;
-  }
-
-  async updateRepository(workspace: string, repoSlug: string, updateData: {
-    description?: string;
-    is_private?: boolean;
-    language?: string;
-    has_issues?: boolean;
-    has_wiki?: boolean;
-    fork_policy?: string;
-  }): Promise<Repository> {
-    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}`;
-    
-    const response = await this.makeRequest<Repository>(url, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
-    
-    return response;
-  }
-
   async getPullRequestDiff(workspace: string, repoSlug: string, pullRequestId: number): Promise<string> {
     const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/diff`;
     return this.makeTextRequest(url);
