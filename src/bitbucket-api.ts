@@ -342,6 +342,11 @@ export class BitbucketAPI {
     };
   }
 
+  async getPullRequest(workspace: string, repoSlug: string, pullRequestId: number): Promise<PullRequest> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}`;
+    return this.makeRequest<PullRequest>(url);
+  }
+
   async getIssues(workspace: string, repoSlug: string, state?: string, page?: string): Promise<{ issues: Issue[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/issues`;
     if (page) {

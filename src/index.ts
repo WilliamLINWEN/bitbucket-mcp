@@ -518,6 +518,7 @@ server.tool(
               "- list-repositories: ✅",
               "- get-repository: ✅", 
               "- list-pull-requests: ✅",
+              "- get-pull-request: ✅",
               "- list-issues: ✅",
               "- list-branches: ✅",
               "- get-commits: ✅",
@@ -716,10 +717,6 @@ server.tool(
   }
 );
 
-
-
-
-
 // Tool: Get performance metrics and insights
 server.tool(
   "get-metrics",
@@ -845,6 +842,55 @@ server.tool(
   }
 );
 
+// Tool: Get pull request details
+server.tool(
+  "get-pull-request",
+  "Get detailed information about a specific pull request",
+  {
+    workspace: z.string().describe("Bitbucket workspace name"),
+    repo_slug: z.string().describe("Repository slug/name"),
+    pull_request_id: z.number().describe("Pull request ID"),
+  },
+  async ({ workspace, repo_slug, pull_request_id }) => {
+    try {
+      const pr = await bitbucketAPI.getPullRequest(workspace, repo_slug, pull_request_id);
+
+      const prInfo = [
+        `# 🔀 Pull Request #${pr.id}: ${pr.title}`,
+        `**Repository:** ${workspace}/${repo_slug}`,
+        `**State:** ${pr.state}`,
+        `**Author:** ${pr.author.display_name} (@${pr.author.username})`,
+        `**Created:** ${new Date(pr.created_on).toLocaleString()}`,
+        `**Updated:** ${new Date(pr.updated_on).toLocaleString()}`,
+        `**Source:** ${pr.source.repository.full_name}:${pr.source.branch.name}`,
+        `**Destination:** ${pr.destination.repository.full_name}:${pr.destination.branch.name}`,
+        `**URL:** ${pr.links.html.href}`,
+        "",
+        "## Description",
+        pr.description || "_No description provided_",
+      ].join("\n");
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: prInfo,
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to retrieve pull request #${pull_request_id} from '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Main function to run the server
 async function main() {
   const transport = new StdioServerTransport();
@@ -852,7 +898,7 @@ async function main() {
   
   // Log startup message to stderr so it doesn't interfere with MCP communication
   console.error("🚀 Bitbucket MCP Server v1.0.0 running on stdio");
-  console.error("📋 Available tools: list-repositories, get-repository, list-pull-requests, list-issues, list-branches, get-commits, health-check, search, get-metrics, get-pr-diff");
+  console.error("📋 Available tools: list-repositories, get-repository, list-pull-requests, get-pull-request, list-issues, list-branches, get-commits, health-check, search, get-metrics, get-pr-diff");
   console.error(`⚙️  Configuration: ${configManager.isAuthenticationConfigured() ? '✅ Authenticated' : '❌ No authentication'}`);
   console.error(`📊 Metrics: ${configManager.get('enableMetrics') ? '✅ Enabled' : '❌ Disabled'}`);
   

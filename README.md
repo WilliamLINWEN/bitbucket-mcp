@@ -12,7 +12,8 @@ This MCP server provides the following tools for Bitbucket integration:
 
 ### Pull Requests
 - **list-pull-requests**: List pull requests for a repository with filtering options
-- **list-pull-requests-diff**: Get the diff of a specific pull request
+- **get-pull-request**: Get detailed information about a specific pull request
+- **get-pr-diff**: Get the diff/changes of a specific pull request
 
 ### Issues
 - **list-issues**: List issues for a repository with state and kind filtering
@@ -106,6 +107,11 @@ Get details for the repository 'myworkspace/myrepo'
 Show all open pull requests for myworkspace/myrepo
 ```
 
+### Get Pull Request Details
+```
+Get detailed information about pull request #123 in myworkspace/myrepo
+```
+
 ### List Issues
 ```
 Show all open bugs in myworkspace/myrepo
@@ -140,6 +146,14 @@ Lists pull requests for a repository.
 - `workspace` (required): Bitbucket workspace name
 - `repo_slug` (required): Repository name/slug
 - `state` (optional): Filter by state (OPEN, MERGED, DECLINED, SUPERSEDED)
+
+### get-pull-request
+Gets detailed information about a specific pull request.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
 
 ### list-issues
 Lists issues for a repository.

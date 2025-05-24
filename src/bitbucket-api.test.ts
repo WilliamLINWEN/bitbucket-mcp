@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BitbucketAPI } from './bitbucket-api.js';
 
-// Mock fetch
+// Mock fetch globally
 const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+global.fetch = mockFetch;
 
 describe('BitbucketAPI', () => {
   let api: BitbucketAPI;
@@ -145,6 +145,97 @@ describe('BitbucketAPI', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo',
         expect.any(Object)
+      );
+    });
+  });
+
+  describe('getPullRequest', () => {
+    it('should return pull request details', async () => {
+      const mockPullRequest = {
+        id: 123,
+        title: 'Fix critical bug',
+        state: 'OPEN',
+        author: {
+          display_name: 'John Doe',
+          username: 'johndoe',
+        },
+        created_on: '2023-12-01T10:00:00Z',
+        updated_on: '2023-12-01T15:30:00Z',
+        source: {
+          branch: {
+            name: 'feature/fix-bug',
+          },
+          repository: {
+            name: 'test-repo',
+          },
+        },
+        destination: {
+          branch: {
+            name: 'main',
+          },
+          repository: {
+            name: 'test-repo',
+          },
+        },
+        links: {
+          html: {
+            href: 'https://bitbucket.org/workspace/test-repo/pull-requests/123',
+          },
+        },
+        description: 'This PR fixes a critical bug in the authentication system.',
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(mockPullRequest),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequest('testworkspace', 'test-repo', 123);
+      
+      expect(result).toEqual(mockPullRequest);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle pull request not found error', async () => {
+      const errorResponse = {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: vi.fn().mockResolvedValue({ error: { message: 'Pull request not found' } }),
+      };
+      mockFetch.mockResolvedValue(errorResponse);
+
+      await expect(api.getPullRequest('testworkspace', 'test-repo', 999)).rejects.toThrow();
+    });
+
+    it('should handle authentication when getting pull request', async () => {
+      const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
+      
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          id: 123,
+          title: 'Test PR',
+          state: 'OPEN',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await authenticatedApi.getPullRequest('testworkspace', 'test-repo', 123);
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Basic dGVzdHVzZXI6dGVzdHBhc3M=',
+          }),
+        })
       );
     });
   });
