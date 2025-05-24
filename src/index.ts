@@ -211,6 +211,101 @@ server.tool(
   }
 );
 
+// Tool: Get pull request diff
+server.tool(
+  "get-pr-diff",
+  "Get the diff/changes for a specific pull request",
+  {
+    workspace: z.string().describe("Bitbucket workspace name"),
+    repo_slug: z.string().describe("Repository slug/name"),
+    pull_request_id: z.number().describe("Pull request ID"),
+  },
+  async ({ workspace, repo_slug, pull_request_id }) => {
+    try {
+      const diff = await bitbucketAPI.getPullRequestDiff(workspace, repo_slug, pull_request_id);
+
+      if (!diff || diff.trim().length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `No changes found in pull request #${pull_request_id} for '${workspace}/${repo_slug}'. The PR might be empty or not exist.`,
+            },
+          ],
+        };
+      }
+
+      // Split diff into sections for better readability
+      const diffLines = diff.split('\n');
+      const fileChanges: string[] = [];
+      let currentFile = '';
+      let currentChanges: string[] = [];
+
+      for (const line of diffLines) {
+        if (line.startsWith('diff --git')) {
+          // Save previous file changes if any
+          if (currentFile && currentChanges.length > 0) {
+            fileChanges.push(`### ${currentFile}\n\`\`\`diff\n${currentChanges.join('\n')}\n\`\`\``);
+          }
+          // Start new file
+          currentFile = line.match(/b\/(.+)$/)?.[1] || 'Unknown file';
+          currentChanges = [line];
+        } else {
+          currentChanges.push(line);
+        }
+      }
+
+      // Add the last file
+      if (currentFile && currentChanges.length > 0) {
+        fileChanges.push(`### ${currentFile}\n\`\`\`diff\n${currentChanges.join('\n')}\n\`\`\``);
+      }
+
+      // If no file-based parsing worked, show the raw diff
+      if (fileChanges.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `# 📝 Pull Request #${pull_request_id} Diff`,
+                `**Repository:** ${workspace}/${repo_slug}`,
+                "",
+                "```diff",
+                diff,
+                "```"
+              ].join("\n"),
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: [
+              `# 📝 Pull Request #${pull_request_id} Diff`,
+              `**Repository:** ${workspace}/${repo_slug}`,
+              `**Files Changed:** ${fileChanges.length}`,
+              "",
+              ...fileChanges
+            ].join("\n"),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Failed to retrieve diff for pull request #${pull_request_id} in '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Tool: List issues
 server.tool(
   "list-issues",

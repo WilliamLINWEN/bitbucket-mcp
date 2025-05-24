@@ -223,6 +223,90 @@ export class BitbucketAPI {
     throw lastError || new Error('Request failed after all retries');
   }
 
+  private async makeTextRequest(url: string, options: RequestInit = {}, requestOptions: RequestOptions = {}): Promise<string> {
+    const { retries = 3, retryDelay = 1000, timeout = 30000 } = requestOptions;
+    
+    const headers: Record<string, string> = {
+      "User-Agent": USER_AGENT,
+      "Accept": "text/plain",
+      ...((options.headers as Record<string, string>) || {}),
+    };
+
+    // Add authentication if credentials are available
+    if (this.username && this.appPassword) {
+      const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
+      headers['Authorization'] = `Basic ${auth}`;
+    }
+
+    console.error(`Making text request to: ${url}`);
+
+    let lastError: ApiError | null = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+        const response = await fetch(url, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const error: ApiError = new Error(`Failed to fetch data: ${response.status} ${response.statusText}`);
+          error.status = response.status;
+          error.statusText = response.statusText;
+          error.url = url;
+          
+          // Don't retry on client errors (4xx), only on server errors (5xx) or network issues
+          if (response.status >= 400 && response.status < 500) {
+            console.error(`Client error (${response.status}): ${response.statusText}`);
+            throw error;
+          }
+          
+          lastError = error;
+          console.error(`Server error (attempt ${attempt + 1}/${retries + 1}): ${response.status} ${response.statusText}`);
+          
+          if (attempt < retries) {
+            console.error(`Retrying in ${retryDelay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+          
+          throw error;
+        }
+
+        console.error(`Text request successful: ${response.status}`);
+        return await response.text();
+        
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          const timeoutError: ApiError = new Error(`Request timeout after ${timeout}ms`);
+          timeoutError.url = url;
+          lastError = timeoutError;
+        } else if (error instanceof Error) {
+          lastError = error as ApiError;
+        }
+        
+        console.error(`Text request failed (attempt ${attempt + 1}/${retries + 1}):`, error);
+        
+        if (attempt < retries) {
+          console.error(`Retrying in ${retryDelay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          continue;
+        }
+        
+        throw lastError || error;
+      }
+    }
+
+    throw lastError || new Error('Text request failed after all retries');
+  }
+
   async listRepositories(workspace: string, page?: string): Promise<{ repositories: Repository[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}`;
     if (page) {
@@ -346,5 +430,10 @@ export class BitbucketAPI {
     });
     
     return response;
+  }
+
+  async getPullRequestDiff(workspace: string, repoSlug: string, pullRequestId: number): Promise<string> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/diff`;
+    return this.makeTextRequest(url);
   }
 }
