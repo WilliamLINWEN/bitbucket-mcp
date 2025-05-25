@@ -1,18 +1,22 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { BitbucketAPI } from './bitbucket-api.js';
 
-// Mock fetch globally
-const mockFetch = vi.fn();
-global.fetch = mockFetch;
+// Mock node-fetch using vi.hoisted to avoid hoisting issues
+const mockFetch = vi.hoisted(() => vi.fn());
+
+vi.mock('node-fetch', () => ({
+  default: mockFetch,
+}));
+
+import { BitbucketAPI } from './bitbucket-api.js';
 
 describe('BitbucketAPI', () => {
   let api: BitbucketAPI;
 
   beforeEach(() => {
+    // Mock console.error to avoid noise in tests before creating the API instance
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     api = new BitbucketAPI();
     vi.clearAllMocks();
-    // Mock console.error to avoid noise in tests
-    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -62,11 +66,11 @@ describe('BitbucketAPI', () => {
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace',
         expect.objectContaining({
-          method: undefined, // GET is default
           headers: expect.objectContaining({
             'Accept': 'application/json',
             'User-Agent': 'bitbucket-mcp-server/1.0',
           }),
+          signal: expect.any(AbortSignal),
         })
       );
     });
