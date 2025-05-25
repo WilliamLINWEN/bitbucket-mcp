@@ -1,6 +1,6 @@
 {
-  "name": "bitbucket_mcp",
-  "version": "1.0.0",
+  "name": "bitbucket-mcp-server",
+  "version": "1.0.1",
   "description": "MCP server for Bitbucket tools and integration",
   "type": "module",
   "main": "./build/index.js",
@@ -17,14 +17,21 @@
     "test:coverage": "vitest run --coverage"
   },
   "files": [
-    "build"
+    "build/",
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "mcp",
     "bitbucket",
     "model-context-protocol"
   ],
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/WilliamLINWEN/bitbucket-mcp.git"
+  },
+  "homepage": "https://github.com/WilliamLINWEN/bitbucket-mcp",
+  "author": "WilliamLin",
   "license": "ISC",
   "devDependencies": {
     "typescript": "^5.8.3",
