@@ -3,7 +3,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { BitbucketAPI, Repository, PullRequest, Issue, Branch, Commit } from "./bitbucket-api.js";
+import { BitbucketAPI, Repository, PullRequest, Issue, Branch, Commit, Comment } from "./bitbucket-api.js";
 import { metricsCollector } from "./metrics.js";
 import { configManager, validateEnvironment } from "./config.js";
 import { MultiTierRateLimiter, createDefaultRateLimitConfig } from "./rate-limiting.js";
@@ -306,6 +306,116 @@ server.tool(
   }
 );
 
+// Tool: Create pull request comment
+server.tool(
+  "create-pr-comment",
+  "Create a comment on a pull request",
+  {
+    workspace: z.string().describe("Bitbucket workspace name"),
+    repo_slug: z.string().describe("Repository slug/name"),
+    pull_request_id: z.number().describe("Pull request ID"),
+    content: z.string().min(1).describe("Comment content in plain text"),
+    file_path: z.string().optional().describe("Path to the file for inline comments"),
+    from_line: z.number().optional().describe("Line number in the old version of the file (for inline comments)"),
+    to_line: z.number().optional().describe("Line number in the new version of the file (for inline comments)"),
+  },
+  async ({ workspace, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
+    try {
+      // Check if authentication is available for creating comments
+      if (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "❌ Authentication required: Creating comments requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+            },
+          ],
+        };
+      }
+
+      // Set up inline options if file_path is provided
+      const inlineOptions = file_path ? {
+        path: file_path,
+        from: from_line,
+        to: to_line
+      } : undefined;
+
+      const comment = await bitbucketAPI.createPullRequestComment(
+        workspace, 
+        repo_slug, 
+        pull_request_id, 
+        content,
+        inlineOptions
+      );
+
+      // Build the success message
+      const successLines = [
+        `✅ **Comment created successfully on PR #${pull_request_id}**`,
+        "",
+        `**Repository:** ${workspace}/${repo_slug}`,
+        `**Comment ID:** ${comment.id}`,
+        `**Author:** ${comment.user.display_name} (@${comment.user.username})`,
+        `**Created:** ${new Date(comment.created_on).toLocaleString()}`,
+        `**URL:** ${comment.links.html.href}`,
+      ];
+
+      // Add inline comment details if applicable
+      if (file_path) {
+        const lineInfo = [];
+        if (from_line !== undefined) {
+          lineInfo.push(`**Line (old version):** ${from_line}`);
+        }
+        if (to_line !== undefined) {
+          lineInfo.push(`**Line (new version):** ${to_line}`);
+        }
+        
+        successLines.push(
+          "",
+          "**Inline Comment:**",
+          `**File:** ${file_path}`,
+          ...(lineInfo.length > 0 ? lineInfo : ["**File comment**"])
+        );
+      }
+      
+      successLines.push(
+        "",
+        "**Content:**",
+        content
+      );
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: successLines.join("\n"),
+          },
+        ],
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Provide more specific error messages based on common scenarios
+      let helpMessage = "";
+      if (errorMessage.includes("401")) {
+        helpMessage = "\n\n**Troubleshooting:**\n- Verify your BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD are correct\n- Ensure the app password has 'Pull requests: Write' permission";
+      } else if (errorMessage.includes("403")) {
+        helpMessage = "\n\n**Troubleshooting:**\n- You may not have permission to comment on this pull request\n- Ensure your app password has 'Pull requests: Write' permission";
+      } else if (errorMessage.includes("404")) {
+        helpMessage = "\n\n**Troubleshooting:**\n- Verify the workspace, repository, and pull request ID are correct\n- The pull request may not exist or may be private";
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `❌ Failed to create comment on PR #${pull_request_id} in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
+          },
+        ],
+      };
+    }
+  }
+);
+
 // Tool: List issues
 server.tool(
   "list-issues",
@@ -519,9 +629,13 @@ server.tool(
               "- get-repository: ✅", 
               "- list-pull-requests: ✅",
               "- get-pull-request: ✅",
+              "- get-pr-diff: ✅",
+              "- create-pr-comment: ✅",
               "- list-issues: ✅",
               "- list-branches: ✅",
               "- get-commits: ✅",
+              "- search: ✅",
+              "- get-metrics: ✅",
               "- health-check: ✅",
               "",
               "All systems operational! 🚀"
@@ -898,7 +1012,7 @@ async function main() {
   
   // Log startup message to stderr so it doesn't interfere with MCP communication
   console.error("🚀 Bitbucket MCP Server v1.0.0 running on stdio");
-  console.error("📋 Available tools: list-repositories, get-repository, list-pull-requests, get-pull-request, list-issues, list-branches, get-commits, health-check, search, get-metrics, get-pr-diff");
+  console.error("📋 Available tools: list-repositories, get-repository, list-pull-requests, get-pull-request, get-pr-diff, create-pr-comment, list-issues, list-branches, get-commits, search, get-metrics, health-check");
   console.error(`⚙️  Configuration: ${configManager.isAuthenticationConfigured() ? '✅ Authenticated' : '❌ No authentication'}`);
   console.error(`📊 Metrics: ${configManager.get('enableMetrics') ? '✅ Enabled' : '❌ Disabled'}`);
   

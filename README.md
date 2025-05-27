@@ -14,6 +14,7 @@ This MCP server provides the following tools for Bitbucket integration:
 - **list-pull-requests**: List pull requests for a repository with filtering options
 - **get-pull-request**: Get detailed information about a specific pull request
 - **get-pr-diff**: Get the diff/changes of a specific pull request
+- **create-pr-comment**: Create a comment on a pull request
 
 ### Issues
 - **list-issues**: List issues for a repository with state and kind filtering
@@ -112,6 +113,19 @@ Show all open pull requests for myworkspace/myrepo
 Get detailed information about pull request #123 in myworkspace/myrepo
 ```
 
+### Create Pull Request Comment
+```
+Add a comment to pull request #123 in myworkspace/myrepo saying "Looks good to me!"
+```
+
+```
+Add an inline comment on line 42 of the new version of src/file.js in pull request #123 saying "This needs optimization"
+```
+
+```
+Add an inline comment on the change between line 25 (old version) and line 28 (new version) in src/file.js in pull request #123
+```
+
 ### List Issues
 ```
 Show all open bugs in myworkspace/myrepo
@@ -154,6 +168,20 @@ Gets detailed information about a specific pull request.
 - `workspace` (required): Bitbucket workspace name
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
+
+### create-pr-comment
+Creates a comment on a pull request. This tool can create both regular comments and inline comments on specific files and line numbers.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
+- `content` (required): Comment content in plain text
+- `file_path` (optional): Path to the file for inline comments
+- `from_line` (optional): Line number in the old version of the file (for inline comments)
+- `to_line` (optional): Line number in the new version of the file (for inline comments)
+
+**Authentication Required:** This tool requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set, and the app password must have "Pull requests: Write" permission.
 
 ### list-issues
 Lists issues for a repository.

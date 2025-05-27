@@ -243,4 +243,251 @@ describe('BitbucketAPI', () => {
       );
     });
   });
+
+  describe('createPullRequestComment', () => {
+    it('should create a comment on a pull request', async () => {
+      const mockComment = {
+        id: 456,
+        content: {
+          raw: 'This is a test comment',
+          markup: 'markdown',
+          html: '<p>This is a test comment</p>',
+        },
+        user: {
+          display_name: 'Test User',
+          username: 'testuser',
+          uuid: '{user-uuid}',
+        },
+        created_on: '2023-01-01T12:00:00Z',
+        updated_on: '2023-01-01T12:00:00Z',
+        links: {
+          self: { href: 'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments/456' },
+          html: { href: 'https://bitbucket.org/testworkspace/test-repo/pull-requests/123/#comment-456' },
+        },
+        pullrequest: {
+          id: 123,
+          title: 'Test PR',
+          links: {
+            html: { href: 'https://bitbucket.org/testworkspace/test-repo/pull-requests/123' },
+          },
+        },
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue(mockComment),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.createPullRequestComment('testworkspace', 'test-repo', 123, 'This is a test comment');
+
+      expect(result).toEqual(mockComment);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Content-Type': 'application/json',
+          }),
+          body: JSON.stringify({
+            content: {
+              raw: 'This is a test comment',
+            },
+          }),
+        })
+      );
+    });
+
+    it('should handle authentication when creating a comment', async () => {
+      const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
+      
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({
+          id: 456,
+          content: { raw: 'Test comment' },
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await authenticatedApi.createPullRequestComment('testworkspace', 'test-repo', 123, 'Test comment');
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({
+            'Authorization': 'Basic dGVzdHVzZXI6dGVzdHBhc3M=',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should handle errors when creating a comment', async () => {
+      const errorResponse = {
+        ok: false,
+        status: 403,
+        statusText: 'Forbidden',
+        json: vi.fn().mockResolvedValue({ error: { message: 'Access denied' } }),
+      };
+      mockFetch.mockResolvedValue(errorResponse);
+
+      await expect(api.createPullRequestComment('testworkspace', 'test-repo', 123, 'Test comment')).rejects.toThrow();
+    });
+
+    it('should create an inline comment on a file', async () => {
+      const mockComment = {
+        id: 789,
+        content: {
+          raw: 'This is an inline comment',
+          markup: 'markdown',
+          html: '<p>This is an inline comment</p>',
+        },
+        user: {
+          display_name: 'Test User',
+          username: 'testuser',
+          uuid: '{user-uuid}',
+        },
+        created_on: '2023-01-01T12:00:00Z',
+        updated_on: '2023-01-01T12:00:00Z',
+        inline: {
+          path: 'src/test.js',
+          to: 42
+        },
+        links: {
+          self: { href: 'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments/789' },
+          html: { href: 'https://bitbucket.org/testworkspace/test-repo/pull-requests/123/#comment-789' },
+        }
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue(mockComment),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const inlineOptions = {
+        path: 'src/test.js',
+        to: 42
+      };
+
+      const result = await api.createPullRequestComment(
+        'testworkspace', 
+        'test-repo', 
+        123, 
+        'This is an inline comment',
+        inlineOptions
+      );
+
+      expect(result).toEqual(mockComment);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            content: {
+              raw: 'This is an inline comment',
+            },
+            inline: {
+              path: 'src/test.js',
+              to: 42
+            }
+          }),
+        })
+      );
+    });
+
+    it('should create an inline comment on old version of a file', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({
+          id: 790,
+          content: { raw: 'Comment on old version' },
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const inlineOptions = {
+        path: 'src/test.js',
+        from: 10
+      };
+
+      await api.createPullRequestComment(
+        'testworkspace', 
+        'test-repo', 
+        123, 
+        'Comment on old version',
+        inlineOptions
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            content: {
+              raw: 'Comment on old version',
+            },
+            inline: {
+              path: 'src/test.js',
+              from: 10
+            }
+          }),
+        })
+      );
+    });
+
+    it('should create an inline comment with both from and to values', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue({
+          id: 791,
+          content: { raw: 'Comment on change between versions' },
+          inline: {
+            path: 'src/main.ts',
+            from: 25,
+            to: 28
+          }
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const inlineOptions = {
+        path: 'src/main.ts',
+        from: 25,
+        to: 28
+      };
+
+      await api.createPullRequestComment(
+        'testworkspace', 
+        'test-repo', 
+        123, 
+        'Comment on change between versions',
+        inlineOptions
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            content: {
+              raw: 'Comment on change between versions',
+            },
+            inline: {
+              path: 'src/main.ts',
+              from: 25,
+              to: 28
+            }
+          }),
+        })
+      );
+    });
+  });
 });

@@ -105,6 +105,33 @@ export interface Commit {
   };
 }
 
+export interface Comment {
+  id: number;
+  content: {
+    raw: string;
+    markup: string;
+    html: string;
+  };
+  user: {
+    display_name: string;
+    username: string;
+    uuid: string;
+  };
+  created_on: string;
+  updated_on: string;
+  links: {
+    self: { href: string };
+    html: { href: string };
+  };
+  pullrequest?: {
+    id: number;
+    title: string;
+    links: {
+      html: { href: string };
+    };
+  };
+}
+
 export interface PaginatedResponse<T> {
   values: T[];
   next?: string;
@@ -396,5 +423,52 @@ export class BitbucketAPI {
   async getPullRequestDiff(workspace: string, repoSlug: string, pullRequestId: number): Promise<string> {
     const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/diff`;
     return this.makeTextRequest(url);
+  }
+
+  async createPullRequestComment(
+    workspace: string, 
+    repoSlug: string, 
+    pullRequestId: number, 
+    content: string,
+    inlineOptions?: {
+      path: string;           // The path to the file being commented on (required for inline)
+      from?: number;          // The comment's anchor line in the old version of the file
+      to?: number;            // The comment's anchor line in the new version of the file
+    }
+  ): Promise<Comment> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
+    
+    const body: any = {
+      content: {
+        raw: content
+      }
+    };
+
+    // Add inline comment information if provided
+    if (inlineOptions) {
+      body.inline = {
+        path: inlineOptions.path
+      };
+      
+      // Add from value if specified (line in old version)
+      if (inlineOptions.from !== undefined) {
+        body.inline.from = inlineOptions.from;
+      }
+      
+      // Add to value if specified (line in new version) 
+      if (inlineOptions.to !== undefined) {
+        body.inline.to = inlineOptions.to;
+      }
+    }
+
+    const response = await this.makeRequest<Comment>(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    return response;
   }
 }
