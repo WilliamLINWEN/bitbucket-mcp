@@ -1,4 +1,5 @@
 import fetch, { RequestInit } from "node-fetch";
+import { recordError, createApiErrorContext } from "./error-context.js";
 
 // Bitbucket API configuration
 const BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0";
