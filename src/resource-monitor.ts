@@ -7,17 +7,53 @@ import os from 'os';
 import process from 'process';
 import logger, { LogLevel } from './debug-logger.js';
 
+// Module-level variables to store monitoring references for cleanup
+let resourceMonitorInterval: NodeJS.Timeout | null = null;
+let eventLoopMonitor: any = null;
+let gcObserver: PerformanceObserver | null = null;
+
+/**
+ * Stop resource monitoring and clean up all timers and observers.
+ */
+export function stopResourceMonitoring(): void {
+  // Clear interval timer
+  if (resourceMonitorInterval) {
+    clearInterval(resourceMonitorInterval);
+    resourceMonitorInterval = null;
+    logger.debug('resource', 'Resource monitoring interval cleared');
+  }
+  
+  // Disable event loop monitor
+  if (eventLoopMonitor) {
+    eventLoopMonitor.disable();
+    eventLoopMonitor = null;
+    logger.debug('resource', 'Event loop monitor disabled');
+  }
+  
+  // Disconnect GC observer
+  if (gcObserver) {
+    gcObserver.disconnect();
+    gcObserver = null;
+    logger.debug('resource', 'GC observer disconnected');
+  }
+  
+  logger.info('resource', 'Resource monitoring stopped and cleaned up');
+}
+
 /**
  * Start periodic resource monitoring.
  * @param intervalMs - Monitoring interval in milliseconds (default: 5000ms)
  */
 export function startResourceMonitoring(intervalMs: number = 5000): void {
+  // Stop any existing monitoring before starting new one
+  stopResourceMonitoring();
+  
   // Setup event loop delay monitor
-  const eventLoopMonitor = monitorEventLoopDelay({ resolution: 10 });
+  eventLoopMonitor = monitorEventLoopDelay({ resolution: 10 });
   eventLoopMonitor.enable();
 
   // Setup garbage collection event monitoring
-  const gcObserver = new PerformanceObserver((list) => {
+  gcObserver = new PerformanceObserver((list) => {
     for (const entry of list.getEntries()) {
       const e = entry as PerformanceEntry & { kind: number };
       const gcType = constants.NODE_PERFORMANCE_GC_MINOR === e.kind ? 'minor' :
@@ -36,7 +72,7 @@ export function startResourceMonitoring(intervalMs: number = 5000): void {
   const networkInterfaces = os.networkInterfaces();
   logger.debug('resource', 'Network interfaces', networkInterfaces);
 
-  setInterval(() => {
+  resourceMonitorInterval = setInterval(() => {
     try {
       // CPU usage since last call
       const cpuUsage = process.cpuUsage();

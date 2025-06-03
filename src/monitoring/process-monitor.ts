@@ -3,6 +3,7 @@
  */
 import logger from '../debug-logger.js';
 import { getMemoryInfo, logProcessInfo } from '../utils/memory-utils.js';
+import { stopResourceMonitoring } from '../resource-monitor.js';
 
 // Memory monitoring variables
 let memoryCheckInterval: NodeJS.Timeout | null = null;
@@ -63,6 +64,8 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     });
     
     stopMemoryMonitoring();
+    // Stop resource monitoring for cleanup
+    stopResourceMonitoring();
     
     // Perform graceful shutdown
     logger.info('process', 'Starting graceful shutdown sequence');
@@ -86,6 +89,8 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     });
     
     stopMemoryMonitoring();
+    // Stop resource monitoring for cleanup
+    stopResourceMonitoring();
     
     // Quick shutdown for interrupt
     logger.info('process', 'Performing interrupt shutdown');
@@ -105,6 +110,8 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     });
     
     stopMemoryMonitoring();
+    // Stop resource monitoring for cleanup
+    stopResourceMonitoring();
     
     // Force quit
     process.exit(131); // Standard exit code for SIGQUIT
@@ -142,6 +149,8 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     logger.measure('Total server uptime', 'server_lifecycle_start');
     
     stopMemoryMonitoring();
+    // Stop resource monitoring before exit
+    stopResourceMonitoring();
   });
 
   // Task 2.3: Add process.on('exit') handler to log final exit code and reason
@@ -160,6 +169,9 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     };
     
     console.error(`[PROCESS-EXIT] ${JSON.stringify(exitMessage)}`);
+    
+    // Ensure resource monitoring is stopped (synchronous)
+    stopResourceMonitoring();
     
     // Determine exit reason based on code
     let reason = 'unknown';
@@ -207,6 +219,8 @@ export function setupProcessMonitoring(serverStartTime: number): void {
     });
     
     stopMemoryMonitoring();
+    // Stop resource monitoring on uncaught exception
+    stopResourceMonitoring();
     
     // Flush logs before forced termination
     logger.flush().then(() => {

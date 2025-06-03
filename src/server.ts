@@ -4,7 +4,7 @@ import { BitbucketAPI } from "./bitbucket-api.js";
 import { MultiTierRateLimiter, createDefaultRateLimitConfig } from "./rate-limiting.js";
 import { configManager, validateEnvironment } from "./config.js";
 import { metricsCollector } from "./metrics.js";
-import { startResourceMonitoring } from "./resource-monitor.js";
+import { startResourceMonitoring, stopResourceMonitoring } from "./resource-monitor.js";
 import { setupProcessMonitoring } from "./monitoring/process-monitor.js";
 import { setupProtocolMonitoring } from "./monitoring/protocol-monitor.js";
 import { setupTransportMonitoring, setupTransportMessageMonitoring } from "./monitoring/transport-monitor.js";
@@ -118,6 +118,60 @@ export async function startServer(): Promise<void> {
     logger.mark('server_connect_done');
     logger.measure('Server connection time', 'server_connect_start');
 
+    // Setup connection lifecycle management for clean shutdown
+    logger.debug('startup', 'Setting up connection lifecycle management');
+    
+    // Handle transport close events for cleanup
+    const originalOnClose = transport.onclose;
+    transport.onclose = () => {
+      logger.info('transport', 'Transport connection closed, initiating cleanup');
+      
+      // Call original close handler if it exists
+      if (originalOnClose) {
+        originalOnClose();
+      }
+      
+      // Stop resource monitoring to clean up timers
+      stopResourceMonitoring();
+      
+      logger.info('transport', 'Cleanup completed, process should exit cleanly');
+      
+      // Ensure process exits cleanly after a brief delay to allow log flushing
+      setTimeout(() => {
+        process.exit(0);
+      }, 100);
+    };
+
+    // Handle transport errors for cleanup
+    const originalOnError = transport.onerror;
+    transport.onerror = (error: any) => {
+      logger.error('transport', 'Transport error occurred, initiating cleanup', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // Call original error handler if it exists
+      if (originalOnError) {
+        originalOnError(error);
+      }
+      
+      // Stop resource monitoring to clean up timers
+      stopResourceMonitoring();
+      
+      // Exit with error code after cleanup
+      setTimeout(() => {
+        process.exit(1);
+      }, 100);
+    };
+
+    // Handle stdio stream end/close events (client disconnect) for cleanup
+    const handleStdioClose = () => {
+      logger.info('transport', 'Stdio stream ended/closed, initiating cleanup');
+      stopResourceMonitoring();
+      setTimeout(() => process.exit(0), 100);
+    };
+    process.stdin.on('end', handleStdioClose);
+    process.stdin.on('close', handleStdioClose);
+
     logger.mark('server_startup_done');
     logger.measure('Total server startup time', 'server_startup_start');
     
@@ -136,6 +190,39 @@ export async function startServer(): Promise<void> {
       }
     });
 
+    // Setup process signal handlers for graceful shutdown
+    const gracefulShutdown = (signal: string) => {
+      logger.info('shutdown', `Received ${signal}, initiating graceful shutdown`);
+      stopResourceMonitoring();
+      setTimeout(() => {
+        logger.info('shutdown', 'Graceful shutdown completed');
+        process.exit(0);
+      }, 100);
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+    process.on('SIGHUP', () => gracefulShutdown('SIGHUP'));
+
+    // Handle uncaught exceptions and unhandled promise rejections
+    process.on('uncaughtException', (error) => {
+      logger.error('shutdown', 'Uncaught exception, cleaning up before exit', {
+        error: error.message,
+        stack: error.stack
+      });
+      stopResourceMonitoring();
+      setTimeout(() => process.exit(1), 100);
+    });
+
+    process.on('unhandledRejection', (reason, promise) => {
+      logger.error('shutdown', 'Unhandled promise rejection, cleaning up before exit', {
+        reason: reason instanceof Error ? reason.message : String(reason),
+        stack: reason instanceof Error ? reason.stack : undefined
+      });
+      stopResourceMonitoring();
+      setTimeout(() => process.exit(1), 100);
+    });
+
     metricsCollector.recordRequest({
       tool: 'server',
       endpoint: 'startup',
@@ -151,6 +238,9 @@ export async function startServer(): Promise<void> {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
+    
+    // Cleanup resources before exit
+    stopResourceMonitoring();
     
     metricsCollector.recordRequest({
       tool: 'server',
