@@ -1,4 +1,6 @@
 # Bitbucket MCP Server
+<img src="./images/logo.jpg" alt="Bitbucket MCP Logo" width="640" height="320">
+
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Bitbucket repositories, pull requests, issues, and more.
 
