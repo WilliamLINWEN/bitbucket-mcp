@@ -63,7 +63,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
 ```json
 {
   "mcpServers": {
-    "bitbucket": {
+    "bitbucbitbucket-mcpket": {
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
@@ -79,13 +79,30 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
 ```json
 {
   "mcpServers": {
-    "bitbucket": {
+    "bitbucket-mcp": {
       "command": "node",
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
         "BITBUCKET_USERNAME": "your-username",
         "BITBUCKET_APP_PASSWORD": "your-app-password"
       }
+    }
+  }
+}
+```
+
+#### Using NPX (Alternative)
+```json
+{
+  "mcpServers": {
+    "bitbucket-mcp": {
+      "command": "npx",
+      "args": ["bitbucket-mcp-server"],
+      "env": {
+        "BITBUCKET_USERNAME": "your-username",
+        "BITBUCKET_APP_PASSWORD": "your-app-password"
+      },
+      "type": "stdio"
     }
   }
 }
