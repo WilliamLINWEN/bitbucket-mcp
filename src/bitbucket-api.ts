@@ -472,4 +472,32 @@ export class BitbucketAPI {
 
     return response;
   }
+
+  /**
+   * Retrieve a specific commit by its hash from a repository.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param commitHash Commit hash (full or short)
+   * @returns Commit object
+   * @throws Error if commitHash is invalid or commit not found
+   */
+  async getCommit(workspace: string, repoSlug: string, commitHash: string): Promise<Commit> {
+    // Validate commitHash: must be at least 7 hex chars
+    if (!/^[a-fA-F0-9]{7,40}$/.test(commitHash)) {
+      throw new Error(
+        `Invalid commit hash: '${commitHash}'. Must be 7-40 hexadecimal characters.`
+      );
+    }
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/commit/${commitHash}`;
+    try {
+      return await this.makeRequest<Commit>(url);
+    } catch (error: any) {
+      if (error?.status === 404) {
+        throw new Error(`Commit '${commitHash}' not found in '${workspace}/${repoSlug}'.`);
+      }
+      throw new Error(
+        `Failed to retrieve commit '${commitHash}' from '${workspace}/${repoSlug}': ${error?.message || error}`
+      );
+    }
+  }
 }

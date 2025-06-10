@@ -541,6 +541,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- list-issues: ✅",
                 "- list-branches: ✅",
                 "- get-commits: ✅",
+                "- get-commit: ✅",
                 "- search: ✅",
                 "- get-metrics: ✅",
                 "",
@@ -873,5 +874,61 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         };
       }
     }
+  );
+
+  // Tool: Get specific commit details
+  server.tool(
+    "get-commit",
+    "Get detailed information about a specific commit in a repository",
+    {
+      workspace: z.string().describe("Bitbucket workspace name"),
+      repo_slug: z.string().describe("Repository slug/name"),
+      commit_hash: z.string().min(7).describe("Commit hash (full 40-char or short 7+ char)"),
+    },
+    withRequestTracking("get-commit", async ({ workspace, repo_slug, commit_hash }) => {
+      try {
+        const commit = await bitbucketAPI.getCommit(workspace, repo_slug, commit_hash);
+        const parentHashes = commit.parents.map((p) => p.hash.substring(0, 8)).join(", ") || "None";
+        const author = commit.author.user
+          ? `${commit.author.user.display_name} (@${commit.author.user.username})`
+          : commit.author.raw;
+        const commitInfo = [
+          `# 💾 Commit ${commit.hash.substring(0, 8)}`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Author:** ${author}`,
+          `**Date:** ${new Date(commit.date).toISOString()}`,
+          `**Parents:** ${parentHashes}`,
+          `**URL:** ${commit.links.html.href}`,
+          "",
+          "## Message",
+          commit.message,
+        ].join("\n");
+        return {
+          content: [
+            {
+              type: "text",
+              text: commitInfo,
+            },
+          ],
+        };
+      } catch (error) {
+        let errorMessage = error instanceof Error ? error.message : String(error);
+        if (/Invalid commit hash/.test(errorMessage)) {
+          errorMessage +=
+            "\n\n**Troubleshooting:**\n- Ensure the commit hash is correct and at least 7 hexadecimal characters.";
+        } else if (/not found/.test(errorMessage)) {
+          errorMessage +=
+            `\n\n**Troubleshooting:**\n- The commit may not exist in this repository.\n- Check if the repository is private or you have access.`;
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve commit: ${errorMessage}`,
+            },
+          ],
+        };
+      }
+    })
   );
 }
