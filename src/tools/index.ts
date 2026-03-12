@@ -318,6 +318,151 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     }
   );
 
+  // Tool: List pull request comments
+  server.tool(
+    "list-pr-comments",
+    "List all comments on a pull request, including inline comments and replies",
+    {
+      workspace: z.string().describe("Bitbucket workspace name"),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pull_request_id: z.number().describe("Pull request ID"),
+    },
+    async ({ workspace, repo_slug, pull_request_id }) => {
+      try {
+        const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id);
+        const comments = result.comments;
+
+        if (comments.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No comments found on pull request #${pull_request_id} in '${workspace}/${repo_slug}'.`,
+              },
+            ],
+          };
+        }
+
+        const commentText = comments.map((comment) => {
+          const lines = [
+            `**Comment #${comment.id}** by ${comment.user.display_name} (@${comment.user.username})`,
+            `  Created: ${new Date(comment.created_on).toLocaleString()}`,
+          ];
+
+          if (comment.parent) {
+            lines.push(`  ↳ Reply to comment #${comment.parent.id}`);
+          }
+
+          if (comment.inline) {
+            const inlineParts = [`  📎 Inline on: ${comment.inline.path}`];
+            if (comment.inline.from !== undefined) {
+              inlineParts.push(`(old L${comment.inline.from})`);
+            }
+            if (comment.inline.to !== undefined) {
+              inlineParts.push(`(new L${comment.inline.to})`);
+            }
+            lines.push(inlineParts.join(' '));
+          }
+
+          // Show truncated content for list view
+          const rawContent = comment.content.raw;
+          const truncated = rawContent.length > 200 ? rawContent.substring(0, 200) + '...' : rawContent;
+          lines.push(`  Content: ${truncated}`);
+          lines.push(`  URL: ${comment.links.html.href}`);
+          lines.push('---');
+
+          return lines.join('\n');
+        });
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Found ${comments.length} comments on PR #${pull_request_id} in '${workspace}/${repo_slug}':\n\n${commentText.join("\n")}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to retrieve comments for PR #${pull_request_id} in '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Get a specific pull request comment
+  server.tool(
+    "get-pr-comment",
+    "Get detailed information about a specific comment on a pull request",
+    {
+      workspace: z.string().describe("Bitbucket workspace name"),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pull_request_id: z.number().describe("Pull request ID"),
+      comment_id: z.number().describe("Comment ID"),
+    },
+    async ({ workspace, repo_slug, pull_request_id, comment_id }) => {
+      try {
+        const comment = await bitbucketAPI.getPullRequestComment(workspace, repo_slug, pull_request_id, comment_id);
+
+        const commentInfo = [
+          `# 💬 Comment #${comment.id} on PR #${pull_request_id}`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Author:** ${comment.user.display_name} (@${comment.user.username})`,
+          `**Created:** ${new Date(comment.created_on).toLocaleString()}`,
+          `**Updated:** ${new Date(comment.updated_on).toLocaleString()}`,
+          `**URL:** ${comment.links.html.href}`,
+        ];
+
+        if (comment.parent) {
+          commentInfo.push(`**Reply to:** Comment #${comment.parent.id}`);
+        }
+
+        if (comment.inline) {
+          commentInfo.push('', '## Inline Comment Details');
+          commentInfo.push(`**File:** ${comment.inline.path}`);
+          if (comment.inline.from !== undefined) {
+            commentInfo.push(`**Old version line:** ${comment.inline.from}`);
+          }
+          if (comment.inline.to !== undefined) {
+            commentInfo.push(`**New version line:** ${comment.inline.to}`);
+          }
+        }
+
+        commentInfo.push('', '## Content', comment.content.raw);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: commentInfo.join('\n'),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let helpMessage = '';
+
+        if (errorMessage.includes('404')) {
+          helpMessage = '\n\n**Troubleshooting:**\n- Verify the workspace, repository, pull request ID, and comment ID are correct\n- The comment may have been deleted';
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve comment #${comment_id} on PR #${pull_request_id} in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
   // Tool: List issues
   server.tool(
     "list-issues",
@@ -511,13 +656,13 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace }) => {
       try {
         const testWorkspace = workspace || "atlassian"; // Use Atlassian's public workspace as default
-        
+
         console.error(`Testing connectivity to Bitbucket API with workspace: ${testWorkspace}`);
-        
+
         const result = await bitbucketAPI.listRepositories(testWorkspace);
-        
+
         const authStatus = BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "Authenticated" : "Unauthenticated (public access only)";
-        
+
         return {
           content: [
             {
@@ -538,6 +683,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- get-pull-request: ✅",
                 "- get-pr-diff: ✅",
                 "- create-pr-comment: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
+                "- list-pr-comments: ✅",
+                "- get-pr-comment: ✅",
                 "- list-issues: ✅",
                 "- list-branches: ✅",
                 "- get-commits: ✅",
@@ -558,7 +705,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         };
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        
+
         return {
           content: [
             {
@@ -672,7 +819,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           try {
             const repoResult = await bitbucketAPI.listRepositories(workspace);
             const repos = repoResult.repositories.slice(0, 3); // Search in first 3 repos
-            
+
             for (const repo of repos) {
               try {
                 const issueResult = await bitbucketAPI.getIssues(workspace, repo.name);
@@ -797,7 +944,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           `**Average Response Time:** ${metrics.averageResponseTime.toFixed(0)}ms`,
           "",
           "## Slowest Endpoints",
-          ...insights.slowestEndpoints.map(endpoint => 
+          ...insights.slowestEndpoints.map(endpoint =>
             `- **${endpoint.endpoint}**: ${endpoint.avgTime.toFixed(0)}ms average`
           ),
           "",

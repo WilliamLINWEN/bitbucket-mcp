@@ -120,6 +120,14 @@ export interface Comment {
   };
   created_on: string;
   updated_on: string;
+  inline?: {
+    path: string;
+    from?: number;
+    to?: number;
+  };
+  parent?: {
+    id: number;
+  };
   links: {
     self: { href: string };
     html: { href: string };
@@ -158,7 +166,7 @@ export class BitbucketAPI {
   constructor(username?: string, appPassword?: string) {
     this.username = username || process.env.BITBUCKET_USERNAME;
     this.appPassword = appPassword || process.env.BITBUCKET_APP_PASSWORD;
-    
+
     // Log authentication status (without exposing credentials)
     if (this.username && this.appPassword) {
       console.error(`BitbucketAPI initialized with credentials for user: ${this.username}`);
@@ -169,7 +177,7 @@ export class BitbucketAPI {
 
   private async makeRequest<T>(url: string, options: RequestInit = {}, requestOptions: RequestOptions = {}): Promise<T> {
     const { retries = 3, retryDelay = 1000, timeout = 30000 } = requestOptions;
-    
+
     const headers: Record<string, string> = {
       "User-Agent": USER_AGENT,
       "Accept": "application/json",
@@ -205,28 +213,28 @@ export class BitbucketAPI {
           error.status = response.status;
           error.statusText = response.statusText;
           error.url = url;
-          
+
           // Don't retry on client errors (4xx), only on server errors (5xx) or network issues
           if (response.status >= 400 && response.status < 500) {
             console.error(`Client error (${response.status}): ${response.statusText}`);
             throw error;
           }
-          
+
           lastError = error;
           console.error(`Server error (attempt ${attempt + 1}/${retries + 1}): ${response.status} ${response.statusText}`);
-          
+
           if (attempt < retries) {
             console.error(`Retrying in ${retryDelay}ms...`);
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
           }
-          
+
           throw error;
         }
 
         console.error(`Request successful: ${response.status}`);
         return (await response.json()) as T;
-        
+
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           const timeoutError: ApiError = new Error(`Request timeout after ${timeout}ms`);
@@ -235,15 +243,15 @@ export class BitbucketAPI {
         } else if (error instanceof Error) {
           lastError = error as ApiError;
         }
-        
+
         console.error(`Request failed (attempt ${attempt + 1}/${retries + 1}):`, error);
-        
+
         if (attempt < retries) {
           console.error(`Retrying in ${retryDelay}ms...`);
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           continue;
         }
-        
+
         throw lastError || error;
       }
     }
@@ -253,7 +261,7 @@ export class BitbucketAPI {
 
   private async makeTextRequest(url: string, options: RequestInit = {}, requestOptions: RequestOptions = {}): Promise<string> {
     const { retries = 3, retryDelay = 1000, timeout = 30000 } = requestOptions;
-    
+
     const headers: Record<string, string> = {
       "User-Agent": USER_AGENT,
       "Accept": "text/plain",
@@ -289,28 +297,28 @@ export class BitbucketAPI {
           error.status = response.status;
           error.statusText = response.statusText;
           error.url = url;
-          
+
           // Don't retry on client errors (4xx), only on server errors (5xx) or network issues
           if (response.status >= 400 && response.status < 500) {
             console.error(`Client error (${response.status}): ${response.statusText}`);
             throw error;
           }
-          
+
           lastError = error;
           console.error(`Server error (attempt ${attempt + 1}/${retries + 1}): ${response.status} ${response.statusText}`);
-          
+
           if (attempt < retries) {
             console.error(`Retrying in ${retryDelay}ms...`);
             await new Promise(resolve => setTimeout(resolve, retryDelay));
             continue;
           }
-          
+
           throw error;
         }
 
         console.error(`Text request successful: ${response.status}`);
         return await response.text();
-        
+
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
           const timeoutError: ApiError = new Error(`Request timeout after ${timeout}ms`);
@@ -319,15 +327,15 @@ export class BitbucketAPI {
         } else if (error instanceof Error) {
           lastError = error as ApiError;
         }
-        
+
         console.error(`Text request failed (attempt ${attempt + 1}/${retries + 1}):`, error);
-        
+
         if (attempt < retries) {
           console.error(`Retrying in ${retryDelay}ms...`);
           await new Promise(resolve => setTimeout(resolve, retryDelay));
           continue;
         }
-        
+
         throw lastError || error;
       }
     }
@@ -342,7 +350,7 @@ export class BitbucketAPI {
     }
 
     const response = await this.makeRequest<PaginatedResponse<Repository>>(url);
-    
+
     return {
       repositories: response.values,
       hasMore: !!response.next
@@ -363,7 +371,7 @@ export class BitbucketAPI {
     }
 
     const response = await this.makeRequest<PaginatedResponse<PullRequest>>(url);
-    
+
     return {
       pullRequests: response.values,
       hasMore: !!response.next
@@ -384,7 +392,7 @@ export class BitbucketAPI {
     }
 
     const response = await this.makeRequest<PaginatedResponse<Issue>>(url);
-    
+
     return {
       issues: response.values,
       hasMore: !!response.next
@@ -398,7 +406,7 @@ export class BitbucketAPI {
     }
 
     const response = await this.makeRequest<PaginatedResponse<Branch>>(url);
-    
+
     return {
       branches: response.values,
       hasMore: !!response.next
@@ -414,11 +422,30 @@ export class BitbucketAPI {
     }
 
     const response = await this.makeRequest<PaginatedResponse<Commit>>(url);
-    
+
     return {
       commits: response.values,
       hasMore: !!response.next
     };
+  }
+
+  async getPullRequestComments(workspace: string, repoSlug: string, pullRequestId: number, page?: string): Promise<{ comments: Comment[]; hasMore: boolean }> {
+    let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
+    if (page) {
+      url = page;
+    }
+
+    const response = await this.makeRequest<PaginatedResponse<Comment>>(url);
+
+    return {
+      comments: response.values,
+      hasMore: !!response.next
+    };
+  }
+
+  async getPullRequestComment(workspace: string, repoSlug: string, pullRequestId: number, commentId: number): Promise<Comment> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments/${commentId}`;
+    return this.makeRequest<Comment>(url);
   }
 
   async getPullRequestDiff(workspace: string, repoSlug: string, pullRequestId: number): Promise<string> {
@@ -427,9 +454,9 @@ export class BitbucketAPI {
   }
 
   async createPullRequestComment(
-    workspace: string, 
-    repoSlug: string, 
-    pullRequestId: number, 
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
     content: string,
     inlineOptions?: {
       path: string;           // The path to the file being commented on (required for inline)
@@ -438,7 +465,7 @@ export class BitbucketAPI {
     }
   ): Promise<Comment> {
     const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
-    
+
     const body: any = {
       content: {
         raw: content
@@ -450,12 +477,12 @@ export class BitbucketAPI {
       body.inline = {
         path: inlineOptions.path
       };
-      
+
       // Add from value if specified (line in old version)
       if (inlineOptions.from !== undefined) {
         body.inline.from = inlineOptions.from;
       }
-      
+
       // Add to value if specified (line in new version) 
       if (inlineOptions.to !== undefined) {
         body.inline.to = inlineOptions.to;

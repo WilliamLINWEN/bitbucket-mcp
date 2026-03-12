@@ -14,7 +14,7 @@ describe('BitbucketAPI', () => {
 
   beforeEach(() => {
     // Mock console.error to avoid noise in tests before creating the API instance
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => { });
     api = new BitbucketAPI();
     vi.clearAllMocks();
   });
@@ -59,7 +59,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const result = await api.listRepositories('testworkspace');
-      
+
       expect(result.repositories).toHaveLength(1);
       expect(result.repositories[0].name).toBe('test-repo');
       expect(result.hasMore).toBe(false);
@@ -78,7 +78,7 @@ describe('BitbucketAPI', () => {
     it('should handle authentication when credentials are provided', async () => {
       // Set up authenticated API
       const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
-      
+
       const mockResponse = {
         ok: true,
         status: 200,
@@ -87,7 +87,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       await authenticatedApi.listRepositories('testworkspace');
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace',
         expect.objectContaining({
@@ -144,7 +144,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const result = await api.getRepository('testworkspace', 'test-repo');
-      
+
       expect(result).toEqual(mockRepo);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo',
@@ -197,7 +197,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       const result = await api.getPullRequest('testworkspace', 'test-repo', 123);
-      
+
       expect(result).toEqual(mockPullRequest);
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
@@ -219,7 +219,7 @@ describe('BitbucketAPI', () => {
 
     it('should handle authentication when getting pull request', async () => {
       const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
-      
+
       const mockResponse = {
         ok: true,
         status: 200,
@@ -232,7 +232,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       await authenticatedApi.getPullRequest('testworkspace', 'test-repo', 123);
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
         expect.objectContaining({
@@ -301,7 +301,7 @@ describe('BitbucketAPI', () => {
 
     it('should handle authentication when creating a comment', async () => {
       const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
-      
+
       const mockResponse = {
         ok: true,
         status: 201,
@@ -313,7 +313,7 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(mockResponse);
 
       await authenticatedApi.createPullRequestComment('testworkspace', 'test-repo', 123, 'Test comment');
-      
+
       expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments',
         expect.objectContaining({
@@ -376,9 +376,9 @@ describe('BitbucketAPI', () => {
       };
 
       const result = await api.createPullRequestComment(
-        'testworkspace', 
-        'test-repo', 
-        123, 
+        'testworkspace',
+        'test-repo',
+        123,
         'This is an inline comment',
         inlineOptions
       );
@@ -418,9 +418,9 @@ describe('BitbucketAPI', () => {
       };
 
       await api.createPullRequestComment(
-        'testworkspace', 
-        'test-repo', 
-        123, 
+        'testworkspace',
+        'test-repo',
+        123,
         'Comment on old version',
         inlineOptions
       );
@@ -465,9 +465,9 @@ describe('BitbucketAPI', () => {
       };
 
       await api.createPullRequestComment(
-        'testworkspace', 
-        'test-repo', 
-        123, 
+        'testworkspace',
+        'test-repo',
+        123,
         'Comment on change between versions',
         inlineOptions
       );
@@ -488,6 +488,131 @@ describe('BitbucketAPI', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('getPullRequestComments', () => {
+    it('should return comments for a pull request', async () => {
+      const mockComments = [
+        {
+          id: 100,
+          content: { raw: 'Looks good!', markup: 'markdown', html: '<p>Looks good!</p>' },
+          user: { display_name: 'Reviewer', username: 'reviewer', uuid: '{reviewer-uuid}' },
+          created_on: '2023-12-01T10:00:00Z',
+          updated_on: '2023-12-01T10:00:00Z',
+          links: {
+            self: { href: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments/100' },
+            html: { href: 'https://bitbucket.org/ws/repo/pull-requests/1/#comment-100' },
+          },
+        },
+        {
+          id: 101,
+          content: { raw: 'Fix this line', markup: 'markdown', html: '<p>Fix this line</p>' },
+          user: { display_name: 'Reviewer', username: 'reviewer', uuid: '{reviewer-uuid}' },
+          created_on: '2023-12-01T11:00:00Z',
+          updated_on: '2023-12-01T11:00:00Z',
+          inline: { path: 'src/main.ts', to: 42 },
+          links: {
+            self: { href: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments/101' },
+            html: { href: 'https://bitbucket.org/ws/repo/pull-requests/1/#comment-101' },
+          },
+        },
+      ];
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: mockComments, next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequestComments('ws', 'repo', 1);
+
+      expect(result.comments).toHaveLength(2);
+      expect(result.comments[0].id).toBe(100);
+      expect(result.comments[1].inline?.path).toBe('src/main.ts');
+      expect(result.hasMore).toBe(false);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle empty comments list', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequestComments('ws', 'repo', 1);
+
+      expect(result.comments).toHaveLength(0);
+      expect(result.hasMore).toBe(false);
+    });
+
+    it('should handle pagination', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [{ id: 200, content: { raw: 'comment' } }],
+          next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequestComments('ws', 'repo', 1);
+
+      expect(result.hasMore).toBe(true);
+    });
+  });
+
+  describe('getPullRequestComment', () => {
+    it('should return a specific comment by ID', async () => {
+      const mockComment = {
+        id: 456,
+        content: { raw: 'Detailed comment', markup: 'markdown', html: '<p>Detailed comment</p>' },
+        user: { display_name: 'Test User', username: 'testuser', uuid: '{user-uuid}' },
+        created_on: '2023-12-01T10:00:00Z',
+        updated_on: '2023-12-01T10:00:00Z',
+        inline: { path: 'src/index.ts', from: 10, to: 15 },
+        parent: { id: 100 },
+        links: {
+          self: { href: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments/456' },
+          html: { href: 'https://bitbucket.org/ws/repo/pull-requests/1/#comment-456' },
+        },
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(mockComment),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequestComment('ws', 'repo', 1, 456);
+
+      expect(result).toEqual(mockComment);
+      expect(result.inline?.path).toBe('src/index.ts');
+      expect(result.parent?.id).toBe(100);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments/456',
+        expect.any(Object)
+      );
+    });
+
+    it('should handle comment not found error', async () => {
+      const errorResponse = {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+        json: vi.fn().mockResolvedValue({ error: { message: 'Comment not found' } }),
+      };
+      mockFetch.mockResolvedValue(errorResponse);
+
+      await expect(api.getPullRequestComment('ws', 'repo', 1, 999)).rejects.toThrow();
     });
   });
 });
