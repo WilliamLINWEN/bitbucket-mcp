@@ -383,6 +383,33 @@ export class BitbucketAPI {
     return this.makeRequest<PullRequest>(url);
   }
 
+  async updatePullRequest(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    updates: { title?: string; description?: string }
+  ): Promise<PullRequest> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}`;
+    
+    // First GET the current pull request to preserve other fields
+    const currentPr = await this.getPullRequest(workspace, repoSlug, pullRequestId);
+    
+    // Create the updated payload
+    const payload = {
+      ...currentPr,
+      title: updates.title !== undefined ? updates.title : currentPr.title,
+      description: updates.description !== undefined ? updates.description : currentPr.description
+    };
+
+    return this.makeRequest<PullRequest>(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+  }
+
   async getIssues(workspace: string, repoSlug: string, state?: string, page?: string): Promise<{ issues: Issue[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/issues`;
     if (page) {
