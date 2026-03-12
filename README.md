@@ -16,7 +16,9 @@ This MCP server provides the following tools for Bitbucket integration:
 - **list-pull-requests**: List pull requests for a repository with filtering options
 - **get-pull-request**: Get detailed information about a specific pull request
 - **get-pr-diff**: Get the diff/changes of a specific pull request
-- **create-pr-comment**: Create a comment on a pull request
+- **create-pr-comment**: Create a comment or inline comment on a pull request
+- **list-pr-comments**: List all comments on a pull request, including inline comments and replies
+- **get-pr-comment**: Get detailed information about a specific comment on a pull request
 
 ### Issues
 - **list-issues**: List issues for a repository with state and kind filtering
@@ -24,6 +26,12 @@ This MCP server provides the following tools for Bitbucket integration:
 ### Source Code
 - **list-branches**: List all branches in a repository
 - **get-commits**: Get recent commits with optional branch filtering
+- **get-commit**: Get detailed information about a specific commit
+
+### System & Search
+- **search**: Search across repositories, pull requests, issues, and commits in a workspace
+- **health-check**: Check connectivity to Bitbucket API and validate credentials
+- **get-metrics**: Get server performance metrics and statistics
 
 ## Installation
 
@@ -65,7 +73,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
 ```json
 {
   "mcpServers": {
-    "bitbucbitbucket-mcpket": {
+    "bitbucket-mcp": {
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
@@ -145,6 +153,15 @@ Add an inline comment on line 42 of the new version of src/file.js in pull reque
 Add an inline comment on the change between line 25 (old version) and line 28 (new version) in src/file.js in pull request #123
 ```
 
+### Get Pull Request Comments
+```
+List all comments and inline notes for pull request #123 in myworkspace/myrepo
+```
+
+```
+Get the details of comment #456 on pull request #123 in myworkspace/myrepo
+```
+
 ### List Issues
 ```
 Show all open bugs in myworkspace/myrepo
@@ -202,6 +219,23 @@ Creates a comment on a pull request. This tool can create both regular comments 
 
 **Authentication Required:** This tool requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set, and the app password must have "Pull requests: Write" permission.
 
+### list-pr-comments
+Lists all comments on a pull request, including inline comments and replies.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
+
+### get-pr-comment
+Gets detailed information about a specific comment on a pull request.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
+- `comment_id` (required): Comment ID
+
 ### list-issues
 Lists issues for a repository.
 
@@ -227,6 +261,35 @@ Gets recent commits for a repository.
 - `branch` (optional): Specific branch name
 - `limit` (optional): Number of commits (1-50, default: 10)
 
+### get-commit
+Gets detailed information about a specific commit in a repository.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `commit_hash` (required): Commit hash (full 40-char or short 7+ char)
+
+### search
+Searches across repositories, pull requests, issues, and commits in a workspace.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `query` (required): Search query (searches in titles, descriptions, and content)
+- `types` (optional): Types of items to search (repositories, pull-requests, issues, commits) (default: `["repositories", "pull-requests", "issues"]`)
+- `limit` (optional): Maximum number of results per type (default: 10)
+
+### health-check
+Checks connectivity to Bitbucket API and validates credentials.
+
+**Parameters:**
+- `workspace` (optional): Optional workspace to test access (defaults to 'atlassian')
+
+### get-metrics
+Gets server performance metrics and statistics.
+
+**Parameters:**
+None
+
 ## Development
 
 ### Building
@@ -242,6 +305,22 @@ npm run dev
 ### Running
 ```bash
 npm start
+```
+
+### Testing
+Run unit tests with Vitest:
+```bash
+npm test
+```
+
+Run tests with UI:
+```bash
+npm run test:ui
+```
+
+Generate test coverage report:
+```bash
+npm run test:coverage
 ```
 
 ## Authentication
