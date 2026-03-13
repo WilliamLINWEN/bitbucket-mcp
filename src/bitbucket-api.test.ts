@@ -491,6 +491,89 @@ describe('BitbucketAPI', () => {
     });
   });
 
+  describe('updatePullRequest', () => {
+    it('should update a pull request title and description successfully', async () => {
+      const mockUpdatedPr = {
+        id: 123,
+        title: 'New Title',
+        description: 'New description',
+        state: 'OPEN',
+        author: { display_name: 'Test User', username: 'testuser' },
+      };
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue(mockUpdatedPr),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.updatePullRequest('testworkspace', 'test-repo', 123, {
+        title: 'New Title',
+        description: 'New description',
+      });
+
+      expect(result).toEqual(mockUpdatedPr);
+      
+      // Verify only one PUT call (no GET)
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
+        expect.objectContaining({
+          method: 'PUT',
+          body: JSON.stringify({
+            title: 'New Title',
+            description: 'New description',
+          }),
+        })
+      );
+    });
+
+    it('should only update provided fields', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ id: 123, description: 'New description' }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.updatePullRequest('testworkspace', 'test-repo', 123, {
+        description: 'New description',
+      });
+
+      // Payload should only contain description, not title
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
+        expect.objectContaining({
+          body: JSON.stringify({
+            description: 'New description',
+          }),
+        })
+      );
+    });
+
+    it('should handle authentication when updating pull request', async () => {
+      const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
+      
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ id: 123 }),
+      });
+
+      await authenticatedApi.updatePullRequest('testworkspace', 'test-repo', 123, { title: 'New' });
+      
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Basic dGVzdHVzZXI6dGVzdHBhc3M=',
+          }),
+        })
+      );
+    });
+  });
+
   describe('getPullRequestComments', () => {
     it('should return comments for a pull request', async () => {
       const mockComments = [

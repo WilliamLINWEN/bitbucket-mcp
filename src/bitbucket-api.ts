@@ -383,6 +383,33 @@ export class BitbucketAPI {
     return this.makeRequest<PullRequest>(url);
   }
 
+  async updatePullRequest(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    updates: { title?: string; description?: string }
+  ): Promise<PullRequest> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}`;
+    
+    // Only send mutable fields to avoid 400 Bad Request from read-only fields
+    const payload: Record<string, any> = {};
+
+    if (updates.title !== undefined) {
+      payload.title = updates.title;
+    }
+    if (updates.description !== undefined) {
+      payload.description = updates.description;
+    }
+
+    return this.makeRequest<PullRequest>(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+  }
+
   async getIssues(workspace: string, repoSlug: string, state?: string, page?: string): Promise<{ issues: Issue[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/issues`;
     if (page) {

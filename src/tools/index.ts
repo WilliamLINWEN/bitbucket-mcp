@@ -681,6 +681,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- get-repository: ✅",
                 "- list-pull-requests: ✅",
                 "- get-pull-request: ✅",
+                "- update-pr-description: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
                 "- get-pr-diff: ✅",
                 "- create-pr-comment: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
                 "- list-pr-comments: ✅",
@@ -1016,6 +1017,91 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
             {
               type: "text",
               text: `Failed to retrieve pull request #${pull_request_id} from '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Update pull request
+  server.tool(
+    "update-pr-description",
+    "Update the title and/or description of a pull request",
+    {
+      workspace: z.string().describe("Bitbucket workspace name"),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pull_request_id: z.number().describe("Pull request ID"),
+      title: z.string().optional().describe("New title for the pull request"),
+      description: z.string().optional().describe("New description for the pull request"),
+    },
+    async ({ workspace, repo_slug, pull_request_id, title, description }) => {
+      try {
+        if (!title && description === undefined) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ You must provide at least one of 'title' or 'description' to update.",
+              },
+            ],
+          };
+        }
+
+        // Check if authentication is available
+        if (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Authentication required: Updating a pull request requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+              },
+            ],
+          };
+        }
+
+        const pr = await bitbucketAPI.updatePullRequest(workspace, repo_slug, pull_request_id, { title, description });
+
+        const prInfo = [
+          `✅ **Successfully updated PR #${pr.id}**`,
+          "",
+          `# 🔀 ${pr.title}`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**State:** ${pr.state}`,
+          `**Author:** ${pr.author.display_name} (@${pr.author.username})`,
+          `**Updated:** ${new Date(pr.updated_on).toLocaleString()}`,
+          `**URL:** ${pr.links.html.href}`,
+        ];
+
+        if (pr.description) {
+          prInfo.push("", "## Description", pr.description);
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: prInfo.join("\n"),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let helpMessage = "";
+
+        if (errorMessage.includes("401") || errorMessage.includes("authentication")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- Verify your BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD are correct\n- Ensure the app password has 'Pull requests: Write' permission";
+        } else if (errorMessage.includes("403")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- You may not have permission to update this pull request\n- Ensure your app password has 'Pull requests: Write' permission";
+        } else if (errorMessage.includes("404")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- Verify the workspace, repository, and pull request ID are correct\n- The pull request may not exist or may be private";
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to update PR #${pull_request_id} from '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
             },
           ],
         };
