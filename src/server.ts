@@ -14,6 +14,7 @@ import logger from "./debug-logger.js";
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
 const BITBUCKET_APP_PASSWORD = process.env.BITBUCKET_APP_PASSWORD;
+const BITBUCKET_API_TOKEN = process.env.BITBUCKET_API_TOKEN;
 
 export async function createServer(): Promise<{ server: McpServer; transport: StdioServerTransport }> {
   // Validate environment on startup
@@ -48,7 +49,7 @@ export async function createServer(): Promise<{ server: McpServer; transport: St
   // Create Bitbucket API instance
   logger.debug('startup', 'Creating BitbucketAPI instance');
   logger.mark('bitbucket_api_start');
-  const bitbucketAPI = new BitbucketAPI(BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD);
+  const bitbucketAPI = new BitbucketAPI(BITBUCKET_USERNAME, BITBUCKET_APP_PASSWORD, BITBUCKET_API_TOKEN);
   logger.mark('bitbucket_api_done');
   logger.measure('BitbucketAPI creation time', 'bitbucket_api_start');
 
@@ -184,7 +185,7 @@ export async function startServer(): Promise<void> {
     logger.info('startup', 'Bitbucket MCP Server started successfully', {
       startupTime: startupDuration,
       environment: {
-        authenticated: !!(BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD),
+        authenticated: !!(BITBUCKET_API_TOKEN || (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD)),
         nodeVersion: process.version,
         platform: process.platform
       }

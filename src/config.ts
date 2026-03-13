@@ -7,6 +7,7 @@ const configSchema = z.object({
   // Authentication
   username: z.string().optional(),
   appPassword: z.string().optional(),
+  apiToken: z.string().optional(),
   
   // API settings
   baseUrl: z.string().url().default('https://api.bitbucket.org/2.0'),
@@ -51,6 +52,7 @@ class ConfigManager {
     const envConfig = {
       username: process.env.BITBUCKET_USERNAME,
       appPassword: process.env.BITBUCKET_APP_PASSWORD,
+      apiToken: process.env.BITBUCKET_API_TOKEN,
       baseUrl: process.env.BITBUCKET_BASE_URL,
       timeout: process.env.BITBUCKET_TIMEOUT ? parseInt(process.env.BITBUCKET_TIMEOUT, 10) : undefined,
       retryAttempts: process.env.BITBUCKET_RETRY_ATTEMPTS ? parseInt(process.env.BITBUCKET_RETRY_ATTEMPTS, 10) : undefined,
@@ -98,7 +100,7 @@ class ConfigManager {
    * Check if authentication is configured
    */
   isAuthenticationConfigured(): boolean {
-    return !!(this.config.username && this.config.appPassword);
+    return !!(this.config.apiToken || (this.config.username && this.config.appPassword));
   }
 
   /**
@@ -109,7 +111,7 @@ class ConfigManager {
 
     // Check authentication
     if (!this.isAuthenticationConfigured()) {
-      errors.push('Authentication not configured. Set BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables.');
+      errors.push('Authentication not configured. Set BITBUCKET_API_TOKEN (recommended), or BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables.');
     }
 
     // Check rate limiting configuration
@@ -146,6 +148,9 @@ class ConfigManager {
     if (summary.appPassword) {
       summary.appPassword = '***';
     }
+    if (summary.apiToken) {
+      summary.apiToken = '***';
+    }
 
     return summary;
   }
@@ -178,12 +183,13 @@ export function validateEnvironment(): { valid: boolean; errors: string[]; warni
   const warnings: string[] = [];
 
   // Required environment variables
-  if (!process.env.BITBUCKET_USERNAME) {
-    errors.push('BITBUCKET_USERNAME environment variable is required for authentication');
-  }
+  const hasApiToken = !!process.env.BITBUCKET_API_TOKEN;
+  const hasAppPassword = !!(process.env.BITBUCKET_USERNAME && process.env.BITBUCKET_APP_PASSWORD);
 
-  if (!process.env.BITBUCKET_APP_PASSWORD) {
-    errors.push('BITBUCKET_APP_PASSWORD environment variable is required for authentication');
+  if (!hasApiToken && !hasAppPassword) {
+    errors.push('Authentication not configured. Set BITBUCKET_API_TOKEN (recommended) or BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables.');
+  } else if (!hasApiToken && hasAppPassword) {
+    warnings.push('Bitbucket App Passwords are deprecated. Please migrate to using BITBUCKET_API_TOKEN.');
   }
 
   // Optional but recommended
