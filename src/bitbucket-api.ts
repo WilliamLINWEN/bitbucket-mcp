@@ -162,14 +162,18 @@ export interface ApiError extends Error {
 export class BitbucketAPI {
   private username?: string;
   private appPassword?: string;
+  private apiToken?: string;
 
-  constructor(username?: string, appPassword?: string) {
+  constructor(username?: string, appPassword?: string, apiToken?: string) {
     this.username = username || process.env.BITBUCKET_USERNAME;
     this.appPassword = appPassword || process.env.BITBUCKET_APP_PASSWORD;
+    this.apiToken = apiToken || process.env.BITBUCKET_API_TOKEN;
 
     // Log authentication status (without exposing credentials)
-    if (this.username && this.appPassword) {
-      console.error(`BitbucketAPI initialized with credentials for user: ${this.username}`);
+    if (this.apiToken) {
+      console.error("BitbucketAPI initialized with API Token credentials");
+    } else if (this.username && this.appPassword) {
+      console.error(`BitbucketAPI initialized with App Password credentials for user: ${this.username}`);
     } else {
       console.error("BitbucketAPI initialized without credentials (public access only)");
     }
@@ -185,7 +189,12 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.username && this.appPassword) {
+    if (this.username && this.apiToken) {
+      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
+      headers['Authorization'] = `Basic ${auth}`;
+    } else if (this.apiToken) {
+      headers['Authorization'] = `Bearer ${this.apiToken}`;
+    } else if (this.username && this.appPassword) {
       const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
       headers['Authorization'] = `Basic ${auth}`;
     }
@@ -269,7 +278,12 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.username && this.appPassword) {
+    if (this.username && this.apiToken) {
+      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
+      headers['Authorization'] = `Basic ${auth}`;
+    } else if (this.apiToken) {
+      headers['Authorization'] = `Bearer ${this.apiToken}`;
+    } else if (this.username && this.appPassword) {
       const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
       headers['Authorization'] = `Basic ${auth}`;
     }

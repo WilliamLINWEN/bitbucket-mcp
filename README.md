@@ -50,20 +50,20 @@ This MCP server provides the following tools for Bitbucket integration:
 
 ### Environment Variables
 
-For private repositories and advanced features, set these environment variables:
+For private repositories and advanced features, set the `BITBUCKET_API_TOKEN` environment variable:
 
 ```bash
-export BITBUCKET_USERNAME="your-username"
-export BITBUCKET_APP_PASSWORD="your-app-password"
+export BITBUCKET_API_TOKEN="your-api-token"
 ```
 
-To create an app password:
-1. Go to Bitbucket Settings → Personal Bitbucket settings → App passwords
-2. Create a new app password with appropriate permissions:
-   - Repositories: Read
-   - Pull requests: Read
-   - Issues: Read
-   - Account: Read
+To create an API token:
+1. Go to Bitbucket Workspace settings → Workspace access tokens (or Repository/Project settings)
+2. Create a new token with appropriate permissions:
+   - Repositories: Read (minimum) or Write
+   - Pull requests: Read (minimum) or Write
+   - Issues: Read (minimum)
+
+> **Note:** The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported for backward compatibility, but is considered deprecated.
 
 ### MCP Client Configuration
 
@@ -77,8 +77,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
-        "BITBUCKET_USERNAME": "your-username",
-        "BITBUCKET_APP_PASSWORD": "your-app-password"
+        "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
   }
@@ -93,8 +92,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
-        "BITBUCKET_USERNAME": "your-username",
-        "BITBUCKET_APP_PASSWORD": "your-app-password"
+        "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
   }
@@ -109,8 +107,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "npx",
       "args": ["bitbucket-mcp-server"],
       "env": {
-        "BITBUCKET_USERNAME": "your-username",
-        "BITBUCKET_APP_PASSWORD": "your-app-password"
+        "BITBUCKET_API_TOKEN": "your-api-token"
       },
       "type": "stdio"
     }
@@ -217,7 +214,7 @@ Creates a comment on a pull request. This tool can create both regular comments 
 - `from_line` (optional): Line number in the old version of the file (for inline comments)
 - `to_line` (optional): Line number in the new version of the file (for inline comments)
 
-**Authentication Required:** This tool requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set, and the app password must have "Pull requests: Write" permission.
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
 
 ### list-pr-comments
 Lists all comments on a pull request, including inline comments and replies.
@@ -330,7 +327,7 @@ This server supports both authenticated and unauthenticated requests:
 - **Unauthenticated**: Can access public repositories with some limitations
 - **Authenticated**: Full access to private repositories and enhanced rate limits
 
-For authentication, use Bitbucket App Passwords (not your account password) for security.
+For authentication, use Bitbucket API Tokens (Workspace, Project, or Repository access tokens) for security. Apps Passwords are still supported but deprecated.
 
 ## Troubleshooting
 
