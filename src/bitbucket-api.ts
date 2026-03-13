@@ -189,7 +189,10 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.apiToken) {
+    if (this.username && this.apiToken) {
+      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
+      headers['Authorization'] = `Basic ${auth}`;
+    } else if (this.apiToken) {
       headers['Authorization'] = `Bearer ${this.apiToken}`;
     } else if (this.username && this.appPassword) {
       const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
@@ -275,7 +278,10 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.apiToken) {
+    if (this.username && this.apiToken) {
+      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
+      headers['Authorization'] = `Basic ${auth}`;
+    } else if (this.apiToken) {
       headers['Authorization'] = `Bearer ${this.apiToken}`;
     } else if (this.username && this.appPassword) {
       const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');

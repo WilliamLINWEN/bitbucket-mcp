@@ -98,7 +98,7 @@ describe('BitbucketAPI', () => {
       );
     });
 
-    it('should handle authentication when apiToken is provided', async () => {
+    it('should handle authentication when apiToken but no username is provided', async () => {
       // Set up API token authenticated API
       const authenticatedApi = new BitbucketAPI(undefined, undefined, 'testtoken');
 
@@ -116,6 +116,29 @@ describe('BitbucketAPI', () => {
         expect.objectContaining({
           headers: expect.objectContaining({
             'Authorization': 'Bearer testtoken',
+          }),
+        })
+      );
+    });
+
+    it('should handle base64 basic auth when both username and apiToken are provided', async () => {
+      // Set up API token authenticated API with username
+      const authenticatedApi = new BitbucketAPI('testuser', undefined, 'testtoken');
+
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await authenticatedApi.listRepositories('testworkspace');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Basic dGVzdHVzZXI6dGVzdHRva2Vu', // Base64 for testuser:testtoken
           }),
         })
       );
