@@ -391,15 +391,15 @@ export class BitbucketAPI {
   ): Promise<PullRequest> {
     const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}`;
     
-    // First GET the current pull request to preserve other fields
-    const currentPr = await this.getPullRequest(workspace, repoSlug, pullRequestId);
-    
-    // Create the updated payload
-    const payload = {
-      ...currentPr,
-      title: updates.title !== undefined ? updates.title : currentPr.title,
-      description: updates.description !== undefined ? updates.description : currentPr.description
-    };
+    // Only send mutable fields to avoid 400 Bad Request from read-only fields
+    const payload: Record<string, any> = {};
+
+    if (updates.title !== undefined) {
+      payload.title = updates.title;
+    }
+    if (updates.description !== undefined) {
+      payload.description = updates.description;
+    }
 
     return this.makeRequest<PullRequest>(url, {
       method: 'PUT',

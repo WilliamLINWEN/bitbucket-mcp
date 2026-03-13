@@ -493,33 +493,20 @@ describe('BitbucketAPI', () => {
 
   describe('updatePullRequest', () => {
     it('should update a pull request title and description successfully', async () => {
-      const mockExistingPr = {
+      const mockUpdatedPr = {
         id: 123,
-        title: 'Original Title',
-        description: 'Original description',
+        title: 'New Title',
+        description: 'New description',
         state: 'OPEN',
         author: { display_name: 'Test User', username: 'testuser' },
       };
 
-      const mockUpdatedPr = {
-        ...mockExistingPr,
-        title: 'New Title',
-        description: 'New description',
-      };
-
-      // Mock first call (GET)
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue(mockExistingPr),
-      });
-
-      // Mock second call (PUT)
-      mockFetch.mockResolvedValueOnce({
+      const mockResponse = {
         ok: true,
         status: 200,
         json: vi.fn().mockResolvedValue(mockUpdatedPr),
-      });
+      };
+      mockFetch.mockResolvedValue(mockResponse);
 
       const result = await api.updatePullRequest('testworkspace', 'test-repo', 123, {
         title: 'New Title',
@@ -528,21 +515,13 @@ describe('BitbucketAPI', () => {
 
       expect(result).toEqual(mockUpdatedPr);
       
-      // Verify GET call
-      expect(mockFetch).toHaveBeenNthCalledWith(
-        1,
-        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
-        expect.any(Object)
-      );
-
-      // Verify PUT call
-      expect(mockFetch).toHaveBeenNthCalledWith(
-        2,
+      // Verify only one PUT call (no GET)
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
         expect.objectContaining({
           method: 'PUT',
           body: JSON.stringify({
-            ...mockExistingPr,
             title: 'New Title',
             description: 'New description',
           }),
@@ -551,35 +530,22 @@ describe('BitbucketAPI', () => {
     });
 
     it('should only update provided fields', async () => {
-      const mockExistingPr = {
-        id: 123,
-        title: 'Original Title',
-        description: 'Original description',
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ id: 123, description: 'New description' }),
       };
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue(mockExistingPr),
-      });
-
-      mockFetch.mockResolvedValueOnce({
-        ok: true,
-        status: 200,
-        json: vi.fn().mockResolvedValue({ ...mockExistingPr, description: 'New description' }),
-      });
+      mockFetch.mockResolvedValue(mockResponse);
 
       await api.updatePullRequest('testworkspace', 'test-repo', 123, {
         description: 'New description',
       });
 
-      expect(mockFetch).toHaveBeenNthCalledWith(
-        2,
+      // Payload should only contain description, not title
+      expect(mockFetch).toHaveBeenCalledWith(
         'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123',
         expect.objectContaining({
           body: JSON.stringify({
-            id: 123,
-            title: 'Original Title',
             description: 'New description',
           }),
         })
