@@ -682,6 +682,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- list-pull-requests: ✅",
                 "- get-pull-request: ✅",
                 "- update-pr-description: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
+                "- create-pull-request: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
                 "- get-pr-diff: ✅",
                 "- create-pr-comment: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
                 "- list-pr-comments: ✅",
@@ -1163,5 +1164,92 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         };
       }
     })
+  );
+  // Tool: Create pull request
+  server.tool(
+    "create-pull-request",
+    "Create a new pull request in a repository",
+    {
+      workspace: z.string().describe("Bitbucket workspace name"),
+      repo_slug: z.string().describe("Repository slug/name"),
+      title: z.string().min(1).describe("Title of the pull request"),
+      source_branch: z.string().describe("Source branch name (the branch with your changes)"),
+      destination_branch: z.string().optional().describe("Destination branch name (defaults to the repository's main branch)"),
+      description: z.string().optional().describe("Description of the pull request (supports Markdown)"),
+      close_source_branch: z.boolean().optional().describe("Whether to close the source branch after the PR is merged"),
+      reviewers: z.array(z.string()).optional().describe("List of reviewer account UUIDs (e.g. '{account-uuid}')"),
+    },
+    async ({ workspace, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
+      try {
+        // Auth guard — creating a PR always requires credentials
+        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Authentication required: Creating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+              },
+            ],
+          };
+        }
+
+        const pr = await bitbucketAPI.createPullRequest(workspace, repo_slug, {
+          title,
+          source_branch,
+          destination_branch,
+          description,
+          close_source_branch,
+          reviewers,
+        });
+
+        const successLines = [
+          `✅ **Pull request created successfully!**`,
+          "",
+          `# 🔀 PR #${pr.id}: ${pr.title}`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**State:** ${pr.state}`,
+          `**Author:** ${pr.author.display_name} (@${pr.author.username})`,
+          `**Source:** ${pr.source.branch.name}`,
+          `**Destination:** ${pr.destination.branch.name}`,
+          `**Created:** ${new Date(pr.created_on).toLocaleString()}`,
+          `**URL:** ${pr.links.html.href}`,
+        ];
+
+        if (pr.description) {
+          successLines.push("", "## Description", pr.description);
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: successLines.join("\n"),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        let helpMessage = "";
+
+        if (errorMessage.includes("401") || errorMessage.includes("authentication")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- Verify your credentials are correct\n- Ensure the token/app password has 'Pull requests: Write' permission";
+        } else if (errorMessage.includes("403")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- You may not have permission to create pull requests in this repository\n- Ensure your token/app password has 'Pull requests: Write' permission";
+        } else if (errorMessage.includes("404")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- Verify the workspace, repository slug, and branch names are correct";
+        } else if (errorMessage.includes("400")) {
+          helpMessage = "\n\n**Troubleshooting:**\n- The source branch may not exist, or a pull request for this branch may already be open\n- Verify that source and destination branches are different";
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to create pull request in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
+            },
+          ],
+        };
+      }
+    }
   );
 }
