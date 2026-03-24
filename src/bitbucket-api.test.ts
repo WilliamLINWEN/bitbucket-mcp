@@ -698,6 +698,123 @@ describe('BitbucketAPI', () => {
     });
   });
 
+  describe('createPullRequest', () => {
+    const mockPR = {
+      id: 42,
+      title: 'My feature PR',
+      state: 'OPEN',
+      description: 'Some description',
+      created_on: '2024-01-01T00:00:00Z',
+      updated_on: '2024-01-01T00:00:00Z',
+      author: { display_name: 'Test User', username: 'testuser' },
+      source: { branch: { name: 'feature/my-branch' }, repository: { full_name: 'workspace/repo' } },
+      destination: { branch: { name: 'main' }, repository: { full_name: 'workspace/repo' } },
+      links: { html: { href: 'https://bitbucket.org/workspace/repo/pull-requests/42' } },
+    };
+
+    it('should create a pull request with required fields only', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue(mockPR),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.createPullRequest('testworkspace', 'test-repo', {
+        title: 'My feature PR',
+        source_branch: 'feature/my-branch',
+      });
+
+      expect(result).toEqual(mockPR);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+          body: JSON.stringify({
+            title: 'My feature PR',
+            source: { branch: { name: 'feature/my-branch' } },
+          }),
+        })
+      );
+    });
+
+    it('should create a pull request with all optional fields', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue(mockPR),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.createPullRequest('testworkspace', 'test-repo', {
+        title: 'My feature PR',
+        source_branch: 'feature/my-branch',
+        destination_branch: 'main',
+        description: 'Some description',
+        close_source_branch: true,
+        reviewers: ['{uuid-1}', '{uuid-2}'],
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            title: 'My feature PR',
+            source: { branch: { name: 'feature/my-branch' } },
+            destination: { branch: { name: 'main' } },
+            description: 'Some description',
+            close_source_branch: true,
+            reviewers: [{ uuid: '{uuid-1}' }, { uuid: '{uuid-2}' }],
+          }),
+        })
+      );
+    });
+
+    it('should send authentication header when creating a pull request', async () => {
+      const authenticatedApi = new BitbucketAPI('testuser', 'testpass');
+      const mockResponse = {
+        ok: true,
+        status: 201,
+        json: vi.fn().mockResolvedValue(mockPR),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await authenticatedApi.createPullRequest('testworkspace', 'test-repo', {
+        title: 'My feature PR',
+        source_branch: 'feature/my-branch',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests',
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Authorization': 'Basic dGVzdHVzZXI6dGVzdHBhc3M=',
+            'Content-Type': 'application/json',
+          }),
+        })
+      );
+    });
+
+    it('should reject on API error when creating a pull request', async () => {
+      const errorResponse = {
+        ok: false,
+        status: 400,
+        statusText: 'Bad Request',
+        json: vi.fn().mockResolvedValue({ error: { message: 'Branch does not exist' } }),
+      };
+      mockFetch.mockResolvedValue(errorResponse);
+
+      await expect(
+        api.createPullRequest('testworkspace', 'test-repo', {
+          title: 'Bad PR',
+          source_branch: 'nonexistent-branch',
+        })
+      ).rejects.toThrow();
+    });
+  });
+
   describe('getPullRequestComment', () => {
     it('should return a specific comment by ID', async () => {
       const mockComment = {

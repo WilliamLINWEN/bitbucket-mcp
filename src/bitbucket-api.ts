@@ -147,6 +147,15 @@ export interface PaginatedResponse<T> {
   size?: number;
 }
 
+export interface CreatePullRequestParams {
+  title: string;
+  source_branch: string;
+  destination_branch?: string;
+  description?: string;
+  close_source_branch?: boolean;
+  reviewers?: string[]; // list of account UUIDs
+}
+
 export interface RequestOptions {
   retries?: number;
   retryDelay?: number;
@@ -539,6 +548,45 @@ export class BitbucketAPI {
     });
 
     return response;
+  }
+
+  async createPullRequest(
+    workspace: string,
+    repoSlug: string,
+    params: CreatePullRequestParams
+  ): Promise<PullRequest> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests`;
+
+    const body: Record<string, any> = {
+      title: params.title,
+      source: {
+        branch: { name: params.source_branch }
+      }
+    };
+
+    if (params.destination_branch !== undefined) {
+      body.destination = { branch: { name: params.destination_branch } };
+    }
+
+    if (params.description !== undefined) {
+      body.description = params.description;
+    }
+
+    if (params.close_source_branch !== undefined) {
+      body.close_source_branch = params.close_source_branch;
+    }
+
+    if (params.reviewers && params.reviewers.length > 0) {
+      body.reviewers = params.reviewers.map(uuid => ({ uuid }));
+    }
+
+    return this.makeRequest<PullRequest>(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
   }
 
   /**
