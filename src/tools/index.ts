@@ -234,12 +234,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
       try {
         // Check if authentication is available for creating comments
-        if (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD) {
+        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
           return {
             content: [
               {
                 type: "text",
-                text: "❌ Authentication required: Creating comments requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+                text: "❌ Authentication required: Creating comments requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
               },
             ],
           };
@@ -1049,12 +1049,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         }
 
         // Check if authentication is available
-        if (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD) {
+        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
           return {
             content: [
               {
                 type: "text",
-                text: "❌ Authentication required: Updating a pull request requires BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+                text: "❌ Authentication required: Updating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
               },
             ],
           };
