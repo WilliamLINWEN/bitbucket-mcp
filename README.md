@@ -110,8 +110,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "args": ["bitbucket-mcp-server"],
       "env": {
         "BITBUCKET_API_TOKEN": "your-api-token"
-      },
-      "type": "stdio"
+      }
     }
   }
 }

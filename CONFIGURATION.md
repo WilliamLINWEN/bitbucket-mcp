@@ -1,4 +1,4 @@
-# Bitbucket MCP Server - Example Configuration
+# Bitbucket MCP Server - Configuration Guide
 
 This file shows example configurations for setting up the Bitbucket MCP server with different MCP clients.
 
@@ -11,12 +11,11 @@ Add this to your `claude_desktop_config.json` file (usually located at `~/Librar
 ```json
 {
   "mcpServers": {
-    "bitbucket": {
+    "bitbucket-mcp": {
       "command": "node",
-      "args": ["/Users/william.lin/workspace/bitbucket_mcp/build/index.js"],
+      "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
-        "BITBUCKET_USERNAME": "your-username",
-        "BITBUCKET_APP_PASSWORD": "your-app-password"
+        "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
   }
@@ -30,12 +29,29 @@ Add this to your `claude_desktop_config.json` file (usually located at `%APPDATA
 ```json
 {
   "mcpServers": {
-    "bitbucket": {
+    "bitbucket-mcp": {
       "command": "node",
-      "args": ["C:\\path\\to\\bitbucket_mcp\\build\\index.js"],
+      "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
-        "BITBUCKET_USERNAME": "your-username",
-        "BITBUCKET_APP_PASSWORD": "your-app-password"
+        "BITBUCKET_API_TOKEN": "your-api-token"
+      }
+    }
+  }
+}
+```
+
+### Using NPX (Alternative)
+
+If you have installed the package from npm (`npm install -g bitbucket-mcp-server`), you can use:
+
+```json
+{
+  "mcpServers": {
+    "bitbucket-mcp": {
+      "command": "npx",
+      "args": ["bitbucket-mcp-server"],
+      "env": {
+        "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
   }
@@ -44,48 +60,59 @@ Add this to your `claude_desktop_config.json` file (usually located at `%APPDATA
 
 ## Environment Variables
 
-Instead of putting credentials in the config file, you can set them as environment variables:
+### Authentication (Required)
 
-```bash
-export BITBUCKET_USERNAME="your-username"
-export BITBUCKET_APP_PASSWORD="your-app-password"
-```
+| Variable | Description |
+|---|---|
+| `BITBUCKET_API_TOKEN` | **(Recommended)** Workspace, Project, or Repository access token |
+| `BITBUCKET_USERNAME` | *(Deprecated)* Bitbucket username for Basic Auth |
+| `BITBUCKET_APP_PASSWORD` | *(Deprecated)* Bitbucket app password for Basic Auth |
 
-Then use this simplified configuration:
+> **Note:** `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` are supported for backward compatibility but are deprecated. Migrate to `BITBUCKET_API_TOKEN`.
 
-```json
-{
-  "mcpServers": {
-    "bitbucket": {
-      "command": "node",
-      "args": ["/absolute/path/to/bitbucket_mcp/build/index.js"]
-    }
-  }
-}
-```
+### Optional Configuration
 
-## Creating a Bitbucket App Password
+| Variable | Default | Description |
+|---|---|---|
+| `BITBUCKET_LOG_LEVEL` | `info` | Log verbosity: `error`, `warn`, `info`, `debug` |
+| `BITBUCKET_TIMEOUT` | `30000` | Request timeout in milliseconds (1000–60000) |
+| `BITBUCKET_ENABLE_METRICS` | `true` | Enable performance metrics collection (`true`/`false`) |
+| `BITBUCKET_RETRY_ATTEMPTS` | `3` | Number of retry attempts on failure (0–5) |
+| `BITBUCKET_RETRY_DELAY` | `1000` | Base delay between retries in milliseconds |
+| `BITBUCKET_MAX_CONCURRENT` | `10` | Maximum concurrent API requests (1–100) |
+| `BITBUCKET_ENABLE_CACHE` | `false` | Enable response caching (`true`/`false`) |
+| `BITBUCKET_CACHE_MAX_AGE` | `300` | Cache TTL in seconds (60–3600) |
+| `BITBUCKET_CACHE_MAX_SIZE` | `100` | Maximum number of cached entries (10–1000) |
 
-1. Go to Bitbucket Settings → Personal Bitbucket settings → App passwords
-2. Click "Create app password"
-3. Give it a descriptive name like "MCP Server"
-4. Select these permissions:
-   - **Account**: Read
+## Creating a Bitbucket API Token
+
+1. Go to **Bitbucket Settings** → **Workspace settings** → **Access tokens**
+   (Or navigate to Repository/Project settings for a scoped token)
+2. Click **Create access token**
+3. Give it a descriptive name like `MCP Server`
+4. Select the minimum required permissions:
    - **Repositories**: Read
-   - **Pull requests**: Read
+   - **Pull requests**: Read (or Write to create/update PRs and comments)
    - **Issues**: Read
-5. Copy the generated password and use it as `BITBUCKET_APP_PASSWORD`
+5. Copy the generated token and set it as `BITBUCKET_API_TOKEN`
 
 ## Testing the Configuration
 
-1. Make sure the server is built: `npm run build`
-2. Test it works: `echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node build/index.js`
+1. Make sure the server is built:
+   ```bash
+   npm run build
+   ```
+2. Test the server responds correctly:
+   ```bash
+   echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | node build/index.js
+   ```
 3. Restart Claude Desktop
 4. Look for the tools icon in Claude Desktop to confirm the server is connected
 
 ## Troubleshooting
 
-- **Server not showing up**: Check the absolute path in your config
-- **Authentication errors**: Verify your username and app password
-- **Permission errors**: Make sure your app password has the required permissions
-- **Build errors**: Run `npm run build` to ensure the server is compiled
+- **Server not showing up**: Check the absolute path in your config and ensure the project has been built (`npm run build`)
+- **Authentication errors**: Verify your `BITBUCKET_API_TOKEN` is valid and not expired
+- **Permission errors**: Make sure your token has the required permissions for the operations you're performing
+- **Build errors**: Run `npm install` followed by `npm run build`
+- **Rate limiting**: Authenticated requests have higher rate limits than unauthenticated ones
