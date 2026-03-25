@@ -15,6 +15,8 @@ This MCP server provides the following tools for Bitbucket integration:
 ### Pull Requests
 - **list-pull-requests**: List pull requests for a repository with filtering options
 - **get-pull-request**: Get detailed information about a specific pull request
+- **create-pull-request**: Create a new pull request in a repository
+- **update-pr-description**: Update the title and/or description of an existing pull request
 - **get-pr-diff**: Get the diff/changes of a specific pull request
 - **create-pr-comment**: Create a comment or inline comment on a pull request
 - **list-pr-comments**: List all comments on a pull request, including inline comments and replies
@@ -50,20 +52,36 @@ This MCP server provides the following tools for Bitbucket integration:
 
 ### Environment Variables
 
-For private repositories and advanced features, set the `BITBUCKET_API_TOKEN` environment variable:
+#### Authentication
 
-```bash
-export BITBUCKET_API_TOKEN="your-api-token"
-```
+| Variable | Description |
+|---|---|
+| `BITBUCKET_API_TOKEN` | **(Required)** Your User API token or Workspace/Project token |
+| `BITBUCKET_USERNAME` | **(Required for User API tokens)** Your Atlassian account email |
+| `BITBUCKET_APP_PASSWORD` | *(Deprecated)* Bitbucket app password for Basic Auth |
 
-To create an API token:
-1. Go to Bitbucket Workspace settings → Workspace access tokens (or Repository/Project settings)
+To create a User API token:
+1. Go to Bitbucket **Personal settings** → **API tokens** (or Workspace settings for workspace tokens)
 2. Create a new token with appropriate permissions:
-   - Repositories: Read (minimum) or Write
-   - Pull requests: Read (minimum) or Write
-   - Issues: Read (minimum)
+   - **Repositories**: Read (minimum) or Write
+   - **Pull requests**: Read (minimum), or Write to create/update PRs and comments
+   - **Issues**: Read (minimum)
 
-> **Note:** The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported for backward compatibility, but is considered deprecated.
+> **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME`. The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported but deprecated.
+
+#### Optional Settings
+
+| Variable | Default | Description |
+|---|---|---|
+| `BITBUCKET_LOG_LEVEL` | `info` | Log verbosity: `error`, `warn`, `info`, `debug` |
+| `BITBUCKET_TIMEOUT` | `30000` | Request timeout in milliseconds (1000–60000) |
+| `BITBUCKET_ENABLE_METRICS` | `true` | Enable performance metrics collection (`true`/`false`) |
+| `BITBUCKET_RETRY_ATTEMPTS` | `3` | Number of retry attempts on failure (0–5) |
+| `BITBUCKET_RETRY_DELAY` | `1000` | Base delay between retries in milliseconds |
+| `BITBUCKET_MAX_CONCURRENT` | `10` | Maximum concurrent API requests (1–100) |
+| `BITBUCKET_ENABLE_CACHE` | `false` | Enable response caching (`true`/`false`) |
+| `BITBUCKET_CACHE_MAX_AGE` | `300` | Cache TTL in seconds (60–3600) |
+| `BITBUCKET_CACHE_MAX_SIZE` | `100` | Maximum number of cached entries (10–1000) |
 
 ### MCP Client Configuration
 
@@ -77,6 +95,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -92,6 +111,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -107,13 +127,15 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "npx",
       "args": ["bitbucket-mcp-server"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
-      },
-      "type": "stdio"
+      }
     }
   }
 }
 ```
+
+> **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
 
 ## Usage Examples
 
@@ -135,6 +157,24 @@ Show all open pull requests for myworkspace/myrepo
 ### Get Pull Request Details
 ```
 Get detailed information about pull request #123 in myworkspace/myrepo
+```
+
+### Create Pull Request
+```
+Create a pull request from feature/my-feature to main in myworkspace/myrepo with title "My Feature PR"
+```
+
+```
+Create a PR from feature/login-revamp to develop in myworkspace/myrepo, title "Login Revamp", description "Revamped the login flow", and close the source branch after merge
+```
+
+### Update Pull Request
+```
+Update the title of pull request #123 in myworkspace/myrepo to "Improved Login Flow"
+```
+
+```
+Update the description of pull request #123 in myworkspace/myrepo
 ```
 
 ### Create Pull Request Comment
@@ -201,6 +241,33 @@ Gets detailed information about a specific pull request.
 - `workspace` (required): Bitbucket workspace name
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
+
+### create-pull-request
+Creates a new pull request in a repository.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `title` (required): Title of the pull request
+- `source_branch` (required): Source branch name (the branch with your changes)
+- `destination_branch` (optional): Destination branch name (defaults to the repository's main branch)
+- `description` (optional): Description of the pull request (supports Markdown)
+- `close_source_branch` (optional): Whether to close the source branch after the PR is merged
+- `reviewers` (optional): List of reviewer account UUIDs (e.g. `{account-uuid}`)
+
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
+
+### update-pr-description
+Updates the title and/or description of an existing pull request.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
+- `title` (optional): New title for the pull request
+- `description` (optional): New description for the pull request
+
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
 
 ### create-pr-comment
 Creates a comment on a pull request. This tool can create both regular comments and inline comments on specific files and line numbers.
@@ -335,7 +402,7 @@ For authentication, use Bitbucket API Tokens (Workspace, Project, or Repository 
 
 1. **"Failed to retrieve repositories"**: Check workspace name and authentication
 2. **Rate limiting**: Bitbucket has API rate limits; authenticated requests have higher limits
-3. **Private repositories not accessible**: Ensure app password has correct permissions
+3. **Private repositories not accessible**: Ensure your `BITBUCKET_API_TOKEN` has the correct permissions
 
 ### Debugging
 
