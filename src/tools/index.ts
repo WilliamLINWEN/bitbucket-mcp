@@ -8,6 +8,8 @@ import { metricsCollector } from "../metrics.js";
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
 const BITBUCKET_APP_PASSWORD = process.env.BITBUCKET_APP_PASSWORD;
+const BITBUCKET_API_TOKEN = process.env.BITBUCKET_API_TOKEN;
+const isAuthenticated = !!(BITBUCKET_API_TOKEN || (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD));
 
 export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   // Tool: List repositories for a workspace
@@ -661,7 +663,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
 
         const result = await bitbucketAPI.listRepositories(testWorkspace);
 
-        const authStatus = BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "Authenticated" : "Unauthenticated (public access only)";
+        const authStatus = isAuthenticated ? "Authenticated" : "Unauthenticated (public access only)";
 
         return {
           content: [
@@ -681,10 +683,10 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- get-repository: ✅",
                 "- list-pull-requests: ✅",
                 "- get-pull-request: ✅",
-                "- update-pr-description: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
-                "- create-pull-request: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
+                "- update-pr-description: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
+                "- create-pull-request: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
                 "- get-pr-diff: ✅",
-                "- create-pr-comment: " + (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD ? "✅" : "❌ (requires auth)"),
+                "- create-pr-comment: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
                 "- list-pr-comments: ✅",
                 "- get-pr-comment: ✅",
                 "- list-issues: ✅",
@@ -727,7 +729,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "**Troubleshooting:**",
                 "1. Check your internet connection",
                 "2. Verify workspace name is correct",
-                "3. Ensure BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD are set for private repos",
+                "3. Ensure BITBUCKET_API_TOKEN or BITBUCKET_USERNAME/BITBUCKET_APP_PASSWORD are set for private repos",
                 "4. Check Bitbucket service status at https://status.atlassian.com/",
               ].join("\n"),
             },
