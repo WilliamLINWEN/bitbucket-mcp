@@ -15,6 +15,8 @@ This MCP server provides the following tools for Bitbucket integration:
 ### Pull Requests
 - **list-pull-requests**: List pull requests for a repository with filtering options
 - **get-pull-request**: Get detailed information about a specific pull request
+- **create-pull-request**: Create a new pull request in a repository
+- **update-pr-description**: Update the title and/or description of an existing pull request
 - **get-pr-diff**: Get the diff/changes of a specific pull request
 - **create-pr-comment**: Create a comment or inline comment on a pull request
 - **list-pr-comments**: List all comments on a pull request, including inline comments and replies
@@ -137,6 +139,24 @@ Show all open pull requests for myworkspace/myrepo
 Get detailed information about pull request #123 in myworkspace/myrepo
 ```
 
+### Create Pull Request
+```
+Create a pull request from feature/my-feature to main in myworkspace/myrepo with title "My Feature PR"
+```
+
+```
+Create a PR from feature/login-revamp to develop in myworkspace/myrepo, title "Login Revamp", description "Revamped the login flow", and close the source branch after merge
+```
+
+### Update Pull Request
+```
+Update the title of pull request #123 in myworkspace/myrepo to "Improved Login Flow"
+```
+
+```
+Update the description of pull request #123 in myworkspace/myrepo
+```
+
 ### Create Pull Request Comment
 ```
 Add a comment to pull request #123 in myworkspace/myrepo saying "Looks good to me!"
@@ -201,6 +221,33 @@ Gets detailed information about a specific pull request.
 - `workspace` (required): Bitbucket workspace name
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
+
+### create-pull-request
+Creates a new pull request in a repository.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `title` (required): Title of the pull request
+- `source_branch` (required): Source branch name (the branch with your changes)
+- `destination_branch` (optional): Destination branch name (defaults to the repository's main branch)
+- `description` (optional): Description of the pull request (supports Markdown)
+- `close_source_branch` (optional): Whether to close the source branch after the PR is merged
+- `reviewers` (optional): List of reviewer account UUIDs (e.g. `{account-uuid}`)
+
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
+
+### update-pr-description
+Updates the title and/or description of an existing pull request.
+
+**Parameters:**
+- `workspace` (required): Bitbucket workspace name
+- `repo_slug` (required): Repository name/slug
+- `pull_request_id` (required): Pull request ID
+- `title` (optional): New title for the pull request
+- `description` (optional): New description for the pull request
+
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
 
 ### create-pr-comment
 Creates a comment on a pull request. This tool can create both regular comments and inline comments on specific files and line numbers.
@@ -335,7 +382,7 @@ For authentication, use Bitbucket API Tokens (Workspace, Project, or Repository 
 
 1. **"Failed to retrieve repositories"**: Check workspace name and authentication
 2. **Rate limiting**: Bitbucket has API rate limits; authenticated requests have higher limits
-3. **Private repositories not accessible**: Ensure app password has correct permissions
+3. **Private repositories not accessible**: Ensure your `BITBUCKET_API_TOKEN` has the correct permissions
 
 ### Debugging
 
