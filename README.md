@@ -56,18 +56,18 @@ This MCP server provides the following tools for Bitbucket integration:
 
 | Variable | Description |
 |---|---|
-| `BITBUCKET_API_TOKEN` | **(Recommended)** Workspace, Project, or Repository access token |
-| `BITBUCKET_USERNAME` | *(Deprecated)* Bitbucket username for Basic Auth |
+| `BITBUCKET_API_TOKEN` | **(Required)** Your User API token or Workspace/Project token |
+| `BITBUCKET_USERNAME` | **(Required for User API tokens)** Your Atlassian account email |
 | `BITBUCKET_APP_PASSWORD` | *(Deprecated)* Bitbucket app password for Basic Auth |
 
-To create an API token:
-1. Go to Bitbucket Workspace settings → **Access tokens** (or Repository/Project settings for a scoped token)
+To create a User API token:
+1. Go to Bitbucket **Personal settings** → **API tokens** (or Workspace settings for workspace tokens)
 2. Create a new token with appropriate permissions:
    - **Repositories**: Read (minimum) or Write
    - **Pull requests**: Read (minimum), or Write to create/update PRs and comments
    - **Issues**: Read (minimum)
 
-> **Note:** The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported for backward compatibility, but is considered deprecated.
+> **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME`. The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported but deprecated.
 
 #### Optional Settings
 
@@ -95,6 +95,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -110,6 +111,7 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "node",
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -125,12 +127,15 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "command": "npx",
       "args": ["bitbucket-mcp-server"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
   }
 }
 ```
+
+> **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
 
 ## Usage Examples
 

@@ -15,6 +15,7 @@ Add this to your `claude_desktop_config.json` file (usually located at `~/Librar
       "command": "node",
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -33,6 +34,7 @@ Add this to your `claude_desktop_config.json` file (usually located at `%APPDATA
       "command": "node",
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -51,6 +53,7 @@ If you have installed the package from npm (`npm install -g bitbucket-mcp-server
       "command": "npx",
       "args": ["bitbucket-mcp-server"],
       "env": {
+        "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
       }
     }
@@ -58,17 +61,19 @@ If you have installed the package from npm (`npm install -g bitbucket-mcp-server
 }
 ```
 
+> **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
+
 ## Environment Variables
 
 ### Authentication (Required)
 
 | Variable | Description |
 |---|---|
-| `BITBUCKET_API_TOKEN` | **(Recommended)** Workspace, Project, or Repository access token |
-| `BITBUCKET_USERNAME` | *(Deprecated)* Bitbucket username for Basic Auth |
+| `BITBUCKET_API_TOKEN` | **(Required)** Your User API token or Workspace/Project token |
+| `BITBUCKET_USERNAME` | **(Required for User API tokens)** Your Atlassian account email |
 | `BITBUCKET_APP_PASSWORD` | *(Deprecated)* Bitbucket app password for Basic Auth |
 
-> **Note:** `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` are supported for backward compatibility but are deprecated. Migrate to `BITBUCKET_API_TOKEN`.
+> **Note:** `BITBUCKET_APP_PASSWORD` is supported for backward compatibility but is deprecated. Default setups should use `BITBUCKET_API_TOKEN` and `BITBUCKET_USERNAME`.
 
 ### Optional Configuration
 
@@ -86,9 +91,9 @@ If you have installed the package from npm (`npm install -g bitbucket-mcp-server
 
 ## Creating a Bitbucket API Token
 
-1. Go to **Bitbucket Settings** → **Workspace settings** → **Access tokens**
-   (Or navigate to Repository/Project settings for a scoped token)
-2. Click **Create access token**
+1. Go to **Bitbucket Personal settings** → **API tokens**
+   (Or navigate to Workspace/Project settings for a scoped token)
+2. Click **Create API token**
 3. Give it a descriptive name like `MCP Server`
 4. Select the minimum required permissions:
    - **Repositories**: Read
