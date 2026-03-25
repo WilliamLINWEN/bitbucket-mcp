@@ -52,20 +52,36 @@ This MCP server provides the following tools for Bitbucket integration:
 
 ### Environment Variables
 
-For private repositories and advanced features, set the `BITBUCKET_API_TOKEN` environment variable:
+#### Authentication
 
-```bash
-export BITBUCKET_API_TOKEN="your-api-token"
-```
+| Variable | Description |
+|---|---|
+| `BITBUCKET_API_TOKEN` | **(Recommended)** Workspace, Project, or Repository access token |
+| `BITBUCKET_USERNAME` | *(Deprecated)* Bitbucket username for Basic Auth |
+| `BITBUCKET_APP_PASSWORD` | *(Deprecated)* Bitbucket app password for Basic Auth |
 
 To create an API token:
-1. Go to Bitbucket Workspace settings → Workspace access tokens (or Repository/Project settings)
+1. Go to Bitbucket Workspace settings → **Access tokens** (or Repository/Project settings for a scoped token)
 2. Create a new token with appropriate permissions:
-   - Repositories: Read (minimum) or Write
-   - Pull requests: Read (minimum) or Write
-   - Issues: Read (minimum)
+   - **Repositories**: Read (minimum) or Write
+   - **Pull requests**: Read (minimum), or Write to create/update PRs and comments
+   - **Issues**: Read (minimum)
 
 > **Note:** The legacy Basic Authentication method using `BITBUCKET_USERNAME` and `BITBUCKET_APP_PASSWORD` is still supported for backward compatibility, but is considered deprecated.
+
+#### Optional Settings
+
+| Variable | Default | Description |
+|---|---|---|
+| `BITBUCKET_LOG_LEVEL` | `info` | Log verbosity: `error`, `warn`, `info`, `debug` |
+| `BITBUCKET_TIMEOUT` | `30000` | Request timeout in milliseconds (1000–60000) |
+| `BITBUCKET_ENABLE_METRICS` | `true` | Enable performance metrics collection (`true`/`false`) |
+| `BITBUCKET_RETRY_ATTEMPTS` | `3` | Number of retry attempts on failure (0–5) |
+| `BITBUCKET_RETRY_DELAY` | `1000` | Base delay between retries in milliseconds |
+| `BITBUCKET_MAX_CONCURRENT` | `10` | Maximum concurrent API requests (1–100) |
+| `BITBUCKET_ENABLE_CACHE` | `false` | Enable response caching (`true`/`false`) |
+| `BITBUCKET_CACHE_MAX_AGE` | `300` | Cache TTL in seconds (60–3600) |
+| `BITBUCKET_CACHE_MAX_SIZE` | `100` | Maximum number of cached entries (10–1000) |
 
 ### MCP Client Configuration
 
