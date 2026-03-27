@@ -64,7 +64,7 @@ describe('BitbucketAPI', () => {
       expect(result.repositories[0].name).toBe('test-repo');
       expect(result.hasMore).toBe(false);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.bitbucket.org/2.0/repositories/testworkspace',
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=10',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Accept': 'application/json',
@@ -89,7 +89,7 @@ describe('BitbucketAPI', () => {
       await authenticatedApi.listRepositories('testworkspace');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.bitbucket.org/2.0/repositories/testworkspace',
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=10',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Authorization': 'Basic dGVzdHVzZXI6dGVzdHBhc3M=', // base64 of testuser:testpass
@@ -112,7 +112,7 @@ describe('BitbucketAPI', () => {
       await authenticatedApi.listRepositories('testworkspace');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.bitbucket.org/2.0/repositories/testworkspace',
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=10',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Authorization': 'Bearer testtoken',
@@ -135,7 +135,7 @@ describe('BitbucketAPI', () => {
       await authenticatedApi.listRepositories('testworkspace');
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.bitbucket.org/2.0/repositories/testworkspace',
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=10',
         expect.objectContaining({
           headers: expect.objectContaining({
             'Authorization': 'Basic dGVzdHVzZXI6dGVzdHRva2Vu', // Base64 for testuser:testtoken
@@ -154,6 +154,78 @@ describe('BitbucketAPI', () => {
       mockFetch.mockResolvedValue(errorResponse);
 
       await expect(api.listRepositories('nonexistent')).rejects.toThrow();
+    });
+
+    it('should return pagination metadata for repositories', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [],
+          page: 1,
+          pagelen: 10,
+          next: 'https://api.bitbucket.org/2.0/repositories/testworkspace?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.listRepositories('testworkspace');
+
+      expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/testworkspace?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should honor custom repository pagelen values above the default minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null, pagelen: 25 }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.listRepositories('testworkspace', { pagelen: 25 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp repository pagelen to the Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null, pagelen: 10 }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.listRepositories('testworkspace', { pagelen: 1 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should treat repository next page URLs as opaque', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.listRepositories(
+        'testworkspace',
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?page=2&pagelen=50'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/testworkspace?page=2&pagelen=50',
+        expect.any(Object)
+      );
     });
   });
 
