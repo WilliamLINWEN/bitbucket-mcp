@@ -25,8 +25,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     withRequestTracking("list-repositories", async ({ workspace: ws, role, sort, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.listRepositories(workspace, { role, sort, page, pagelen });
         const repositories = result.repositories;
 
@@ -88,8 +88,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       repo_slug: z.string().describe("Repository slug/name"),
     },
     async ({ workspace: ws, repo_slug }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const repo = await bitbucketAPI.getRepository(workspace, repo_slug);
 
         const cloneUrls = repo.links.clone?.map((link: any) => `${link.name}: ${link.href}`).join("\n  ") || "No clone URLs available";
@@ -122,7 +122,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve repository '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve repository '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -145,8 +145,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, state, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state, page, pagelen);
         const pullRequests = result.pullRequests;
 
@@ -193,7 +193,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve pull requests for '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve pull requests for '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -211,8 +211,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pull_request_id: z.number().describe("Pull request ID"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const diff = await bitbucketAPI.getPullRequestDiff(workspace, repo_slug, pull_request_id);
 
         if (!diff || diff.trim().length === 0) {
@@ -239,7 +239,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve diff for pull request #${pull_request_id} in '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve diff for pull request #${pull_request_id} in '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -261,8 +261,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       to_line: z.number().optional().describe("Line number in the new version of the file (for inline comments)"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         // Check if authentication is available for creating comments
         if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
           return {
@@ -340,7 +340,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `❌ Failed to create comment on PR #${pull_request_id} in '${ws}/${repo_slug}': ${errorMessage}${helpMessage}`,
+              text: `❌ Failed to create comment on PR #${pull_request_id} in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
             },
           ],
         };
@@ -360,8 +360,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id, { page, pagelen });
         const comments = result.comments;
 
@@ -426,7 +426,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve comments for PR #${pull_request_id} in '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve comments for PR #${pull_request_id} in '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -445,8 +445,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       comment_id: z.number().describe("Comment ID"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id, comment_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const comment = await bitbucketAPI.getPullRequestComment(workspace, repo_slug, pull_request_id, comment_id);
 
         const commentInfo = [
@@ -495,7 +495,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `❌ Failed to retrieve comment #${comment_id} on PR #${pull_request_id} in '${ws}/${repo_slug}': ${errorMessage}${helpMessage}`,
+              text: `❌ Failed to retrieve comment #${comment_id} on PR #${pull_request_id} in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
             },
           ],
         };
@@ -516,8 +516,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, state, kind, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.getIssues(workspace, repo_slug, state, page, pagelen);
         const issues = result.issues;
 
@@ -577,7 +577,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve issues for '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve issues for '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -596,8 +596,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.getBranches(workspace, repo_slug, page, pagelen);
         const branches = result.branches;
 
@@ -641,7 +641,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve branches for '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve branches for '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -661,8 +661,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, branch, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const result = await bitbucketAPI.getCommits(workspace, repo_slug, branch, page, pagelen);
         const commits = result.commits;
 
@@ -705,7 +705,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve commits for '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve commits for '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -1053,8 +1053,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       pull_request_id: z.number().describe("Pull request ID"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const pr = await bitbucketAPI.getPullRequest(workspace, repo_slug, pull_request_id);
 
         const prInfo = [
@@ -1086,7 +1086,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `Failed to retrieve pull request #${pull_request_id} from '${ws}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
+              text: `Failed to retrieve pull request #${pull_request_id} from '${workspace}/${repo_slug}': ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };
@@ -1106,8 +1106,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       description: z.string().optional().describe("New description for the pull request"),
     },
     async ({ workspace: ws, repo_slug, pull_request_id, title, description }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         if (!title && description === undefined) {
           return {
             content: [
@@ -1172,7 +1172,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `❌ Failed to update PR #${pull_request_id} from '${ws}/${repo_slug}': ${errorMessage}${helpMessage}`,
+              text: `❌ Failed to update PR #${pull_request_id} from '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
             },
           ],
         };
@@ -1190,8 +1190,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       commit_hash: z.string().min(7).describe("Commit hash (full 40-char or short 7+ char)"),
     },
     withRequestTracking("get-commit", async ({ workspace: ws, repo_slug, commit_hash }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         const commit = await bitbucketAPI.getCommit(workspace, repo_slug, commit_hash);
         const parentHashes = commit.parents.map((p) => p.hash.substring(0, 8)).join(", ") || "None";
         const author = commit.author.user
@@ -1251,8 +1251,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       reviewers: z.array(z.string()).optional().describe("List of reviewer account UUIDs (e.g. '{account-uuid}')"),
     },
     async ({ workspace: ws, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
+      const workspace = resolveWorkspace(ws);
       try {
-        const workspace = resolveWorkspace(ws);
         // Auth guard — creating a PR always requires credentials
         if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
           return {
@@ -1317,7 +1317,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           content: [
             {
               type: "text",
-              text: `❌ Failed to create pull request in '${ws}/${repo_slug}': ${errorMessage}${helpMessage}`,
+              text: `❌ Failed to create pull request in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
             },
           ],
         };

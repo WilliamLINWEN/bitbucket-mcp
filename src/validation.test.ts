@@ -1,5 +1,15 @@
-import { describe, it, expect } from 'vitest';
-import { validateWorkspace, validateRepoSlug, WorkspaceSchema, RepoSlugSchema, BranchNameSchema } from './validation.js';
+import { afterEach, describe, it, expect } from 'vitest';
+import { validateWorkspace, validateRepoSlug, WorkspaceSchema, RepoSlugSchema, BranchNameSchema, resolveWorkspace } from './validation.js';
+
+const originalWorkspaceEnv = process.env.BITBUCKET_WORKSPACE;
+
+afterEach(() => {
+  if (originalWorkspaceEnv === undefined) {
+    delete process.env.BITBUCKET_WORKSPACE;
+  } else {
+    process.env.BITBUCKET_WORKSPACE = originalWorkspaceEnv;
+  }
+});
 
 describe('Validation', () => {
   describe('validateWorkspace', () => {
@@ -65,6 +75,34 @@ describe('Validation', () => {
       expect(() => BranchNameSchema.parse('feature/my-feature')).not.toThrow();
       expect(() => BranchNameSchema.parse('')).toThrow();
       expect(() => BranchNameSchema.parse('a'.repeat(201))).toThrow();
+    });
+  });
+
+  describe('resolveWorkspace', () => {
+    it('prefers the explicit tool argument over BITBUCKET_WORKSPACE', () => {
+      process.env.BITBUCKET_WORKSPACE = 'env-workspace';
+
+      expect(resolveWorkspace('arg-workspace')).toBe('arg-workspace');
+    });
+
+    it('falls back to BITBUCKET_WORKSPACE when the tool argument is undefined', () => {
+      process.env.BITBUCKET_WORKSPACE = 'env-workspace';
+
+      expect(resolveWorkspace(undefined)).toBe('env-workspace');
+    });
+
+    it('throws a clear error when neither the tool argument nor BITBUCKET_WORKSPACE is set', () => {
+      delete process.env.BITBUCKET_WORKSPACE;
+
+      expect(() => resolveWorkspace(undefined)).toThrow(
+        'workspace parameter is required. Provide it as a tool argument or set the BITBUCKET_WORKSPACE environment variable.'
+      );
+    });
+
+    it('treats an empty-string tool argument as invalid instead of falling back to BITBUCKET_WORKSPACE', () => {
+      process.env.BITBUCKET_WORKSPACE = 'env-workspace';
+
+      expect(() => resolveWorkspace('')).toThrow(/Invalid workspace value:/);
     });
   });
 });

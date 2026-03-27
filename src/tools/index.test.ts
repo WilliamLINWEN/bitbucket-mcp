@@ -20,6 +20,8 @@ function buildInput(schema: Record<string, z.ZodTypeAny>, input: Record<string, 
   return z.object(schema).parse(input);
 }
 
+const originalWorkspaceEnv = process.env.BITBUCKET_WORKSPACE;
+
 describe('registerTools', () => {
   it('keeps list-pull-requests compatible with a single state value', async () => {
     const server = new FakeServer();
@@ -67,5 +69,67 @@ describe('registerTools', () => {
 
     const result = await tool!.handler(input);
     expect(result.content[0].text).toContain("Found 50 recent commits in 'ws/repo'");
+  });
+
+  it('uses the resolved workspace in error messages when workspace comes from BITBUCKET_WORKSPACE', async () => {
+    process.env.BITBUCKET_WORKSPACE = 'env-workspace';
+    process.env.BITBUCKET_API_TOKEN = 'test-token';
+
+    const apiError = new Error('simulated failure');
+    const bitbucketAPI = {
+      getPullRequestDiff: vi.fn().mockRejectedValue(apiError),
+      createPullRequestComment: vi.fn().mockRejectedValue(apiError),
+      getBranches: vi.fn().mockRejectedValue(apiError),
+      getPullRequest: vi.fn().mockRejectedValue(apiError),
+      createPullRequest: vi.fn().mockRejectedValue(apiError),
+    };
+
+    const server = new FakeServer();
+    registerTools(server as any, bitbucketAPI as any);
+
+    const cases = [
+      {
+        toolName: 'get-pr-diff',
+        input: { repo_slug: 'repo', pull_request_id: 123 },
+      },
+      {
+        toolName: 'create-pr-comment',
+        input: { repo_slug: 'repo', pull_request_id: 123, content: 'hello' },
+      },
+      {
+        toolName: 'list-branches',
+        input: { repo_slug: 'repo' },
+      },
+      {
+        toolName: 'get-pull-request',
+        input: { repo_slug: 'repo', pull_request_id: 123 },
+      },
+      {
+        toolName: 'create-pull-request',
+        input: {
+          repo_slug: 'repo',
+          title: 'Test PR',
+          source_branch: 'feature/test',
+          destination_branch: 'main',
+        },
+      },
+    ];
+
+    for (const testCase of cases) {
+      const tool = server.tools.get(testCase.toolName);
+      expect(tool).toBeDefined();
+
+      const parsedInput = buildInput(tool!.schema, testCase.input);
+      const result = await tool!.handler(parsedInput);
+      expect(result.content[0].text).toContain("'env-workspace/repo'");
+      expect(result.content[0].text).not.toContain("'undefined/repo'");
+    }
+
+    delete process.env.BITBUCKET_API_TOKEN;
+    if (originalWorkspaceEnv === undefined) {
+      delete process.env.BITBUCKET_WORKSPACE;
+    } else {
+      process.env.BITBUCKET_WORKSPACE = originalWorkspaceEnv;
+    }
   });
 });
