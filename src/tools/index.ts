@@ -134,7 +134,10 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
-      state: z.array(z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"])).optional().describe("Filter by PR state. Accepts one or more states: OPEN, MERGED, DECLINED, SUPERSEDED"),
+      state: z.union([
+        z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]),
+        z.array(z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"])),
+      ]).optional().describe("Filter by PR state. Accepts a single state or an array of states: OPEN, MERGED, DECLINED, SUPERSEDED"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
@@ -143,7 +146,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state, page, pagelen);
         const pullRequests = result.pullRequests;
 
-        const stateText = state?.length ? ` with state [${state.join(', ')}]` : '';
+        const stateList = state ? (Array.isArray(state) ? state : [state]) : [];
+        const stateText = stateList.length > 0 ? ` with state [${stateList.join(', ')}]` : '';
 
         if (pullRequests.length === 0) {
           return {
@@ -643,14 +647,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
       branch: z.string().optional().describe("Branch name (defaults to main branch)"),
-      limit: z.number().min(1).max(50).optional().default(10).describe("Limit results to this many commits from the current page (1-50, default: 10). Use 'page' and 'pagelen' for real pagination."),
+      limit: z.number().min(1).max(50).optional().describe("Optionally limit results to this many commits from the current page (1-50). When omitted, returns all commits on the page as controlled by 'pagelen'."),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace, repo_slug, branch, limit, page, pagelen }) => {
       try {
         const result = await bitbucketAPI.getCommits(workspace, repo_slug, branch, page, pagelen);
-        const commits = result.commits.slice(0, limit);
+        const commits = limit !== undefined ? result.commits.slice(0, limit) : result.commits;
 
         if (commits.length === 0) {
           return {
