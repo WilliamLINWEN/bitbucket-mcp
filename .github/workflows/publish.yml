@@ -33,8 +33,7 @@ jobs:
           fi
 
       - name: Install dependencies
-        # Work around npm optional dependency resolution issues with Rollup native binaries in CI.
-        run: npm install
+        run: npm ci
 
       - name: Run tests
         run: npm run test:run
