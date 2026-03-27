@@ -501,10 +501,32 @@ export class BitbucketAPI {
     };
   }
 
-  async getPullRequestComments(workspace: string, repoSlug: string, pullRequestId: number, page?: string): Promise<{ comments: Comment[]; hasMore: boolean }> {
+  async getPullRequestComments(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    options?: string | { page?: string; pagelen?: number }
+  ): Promise<{ comments: Comment[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
-    if (page) {
-      url = page;
+    let queryOptions: { page?: string; pagelen?: number } = {};
+
+    if (typeof options === 'string') {
+      queryOptions.page = options;
+    } else if (options) {
+      queryOptions = options;
+    }
+
+    if (queryOptions.page && queryOptions.page.startsWith('http')) {
+      url = queryOptions.page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (queryOptions.page) queryParams.append('page', queryOptions.page);
+      if (queryOptions.pagelen) queryParams.append('pagelen', queryOptions.pagelen.toString());
+
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
     }
 
     const response = await this.makeRequest<PaginatedResponse<Comment>>(url);

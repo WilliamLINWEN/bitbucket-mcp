@@ -330,10 +330,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
+      page: z.string().optional().describe("Page number or next page URL for pagination"),
+      pagelen: z.number().int().min(1).max(100).optional().describe("Number of items per page (default: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, pull_request_id }) => {
+    async ({ workspace, repo_slug, pull_request_id, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id);
+        const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id, { page, pagelen });
         const comments = result.comments;
 
         if (comments.length === 0) {
