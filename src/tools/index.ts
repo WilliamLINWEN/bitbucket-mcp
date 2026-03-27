@@ -20,8 +20,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name (username or team name)"),
       role: z.enum(["owner", "admin", "contributor", "member"]).optional().describe("Filter by user role"),
       sort: z.enum(["created_on", "updated_on", "name", "size"]).optional().describe("Sort repositories by"),
-      page: z.string().optional().describe("Page number or next page URL for pagination"),
-      pagelen: z.number().int().min(1).max(100).optional().describe("Number of items per page (default: 10, max: 100)"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     withRequestTracking("list-repositories", async ({ workspace, role, sort, page, pagelen }) => {
       try {
@@ -50,11 +50,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "---",
         ].join("\n"));
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${repositories.length} repositories in workspace '${workspace}':\n\n${repoText.join("\n")}`,
+              text: `Found ${repositories.length} repositories in workspace '${workspace}':\n\n${repoText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };
@@ -330,10 +336,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, pull_request_id }) => {
+    async ({ workspace, repo_slug, pull_request_id, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id);
+        const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id, { page, pagelen });
         const comments = result.comments;
 
         if (comments.length === 0) {
@@ -378,11 +386,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           return lines.join('\n');
         });
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${comments.length} comments on PR #${pull_request_id} in '${workspace}/${repo_slug}':\n\n${commentText.join("\n")}`,
+              text: `Found ${comments.length} comments on PR #${pull_request_id} in '${workspace}/${repo_slug}':\n\n${commentText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };

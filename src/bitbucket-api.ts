@@ -144,6 +144,9 @@ export interface Comment {
 export interface PaginatedResponse<T> {
   values: T[];
   next?: string;
+  previous?: string;
+  page?: number;
+  pagelen?: number;
   size?: number;
 }
 
@@ -369,7 +372,7 @@ export class BitbucketAPI {
   async listRepositories(
     workspace: string,
     options?: string | { role?: string; sort?: string; page?: string; pagelen?: number }
-  ): Promise<{ repositories: Repository[]; hasMore: boolean }> {
+  ): Promise<{ repositories: Repository[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}`;
     let queryOptions: { role?: string; sort?: string; page?: string; pagelen?: number } = {};
 
@@ -386,7 +389,9 @@ export class BitbucketAPI {
       if (queryOptions.role) queryParams.append('role', queryOptions.role);
       if (queryOptions.sort) queryParams.append('sort', queryOptions.sort);
       if (queryOptions.page) queryParams.append('page', queryOptions.page);
-      if (queryOptions.pagelen) queryParams.append('pagelen', queryOptions.pagelen.toString());
+      
+      const pagelen = queryOptions.pagelen !== undefined ? Math.min(100, Math.max(10, queryOptions.pagelen)) : 10;
+      queryParams.append('pagelen', pagelen.toString());
 
       const queryString = queryParams.toString();
       if (queryString) {
@@ -398,7 +403,10 @@ export class BitbucketAPI {
 
     return {
       repositories: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
@@ -501,17 +509,44 @@ export class BitbucketAPI {
     };
   }
 
-  async getPullRequestComments(workspace: string, repoSlug: string, pullRequestId: number, page?: string): Promise<{ comments: Comment[]; hasMore: boolean }> {
+  async getPullRequestComments(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    options?: string | { page?: string; pagelen?: number }
+  ): Promise<{ comments: Comment[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
-    if (page) {
-      url = page;
+    let queryOptions: { page?: string; pagelen?: number } = {};
+
+    if (typeof options === 'string') {
+      queryOptions.page = options;
+    } else if (options) {
+      queryOptions = options;
+    }
+
+    if (queryOptions.page && queryOptions.page.startsWith('http')) {
+      url = queryOptions.page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (queryOptions.page) queryParams.append('page', queryOptions.page);
+      
+      const pagelen = queryOptions.pagelen !== undefined ? Math.min(100, Math.max(10, queryOptions.pagelen)) : 10;
+      queryParams.append('pagelen', pagelen.toString());
+
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
     }
 
     const response = await this.makeRequest<PaginatedResponse<Comment>>(url);
 
     return {
       comments: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
