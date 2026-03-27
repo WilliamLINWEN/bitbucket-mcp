@@ -323,7 +323,8 @@ Gets recent commits for a repository.
 - `workspace` (required): Bitbucket workspace name
 - `repo_slug` (required): Repository name/slug
 - `branch` (optional): Specific branch name
-- `limit` (optional): Number of commits (1-50, default: 10)
+- `page` (optional): Page number or opaque next page URL from Bitbucket pagination
+- `pagelen` (optional): Number of commits per page (default: 10, min: 10, max: 100)
 
 ### get-commit
 Gets detailed information about a specific commit in a repository.

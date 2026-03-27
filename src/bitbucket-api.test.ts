@@ -991,4 +991,359 @@ describe('BitbucketAPI', () => {
       await expect(api.getPullRequestComment('ws', 'repo', 1, 999)).rejects.toThrow();
     });
   });
+
+  describe('getPullRequests', () => {
+    it('should return pull requests with pagination metadata', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [{ id: 1, title: 'Test PR', state: 'OPEN' }],
+          page: 1,
+          pagelen: 10,
+          next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getPullRequests('ws', 'repo');
+
+      expect(result.pullRequests).toHaveLength(1);
+      expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should use opaque next URL directly when page starts with http', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests(
+        'ws',
+        'repo',
+        undefined,
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?page=3&pagelen=25'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?page=3&pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should include state filter when page is not an opaque URL', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests('ws', 'repo', 'OPEN');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?state=OPEN&pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should support multiple state values as repeated query parameters', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests('ws', 'repo', ['OPEN', 'MERGED']);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?state=OPEN&state=MERGED&pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp pull request pagelen to Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests('ws', 'repo', undefined, undefined, 1);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should honor custom pull request pagelen within range', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests('ws', 'repo', undefined, undefined, 50);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?pagelen=50',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getIssues', () => {
+    it('should return issues with pagination metadata', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [{ id: 10, title: 'Test Issue', state: 'open', kind: 'bug' }],
+          page: 1,
+          pagelen: 10,
+          next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/issues?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getIssues('ws', 'repo');
+
+      expect(result.issues).toHaveLength(1);
+      expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/ws/repo/issues?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should use opaque next URL directly when page starts with http', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getIssues(
+        'ws',
+        'repo',
+        undefined,
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/issues?page=2&pagelen=25'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/issues?page=2&pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should include state filter when page is not an opaque URL', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getIssues('ws', 'repo', 'open');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/issues?state=open&pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp issue pagelen to Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getIssues('ws', 'repo', undefined, undefined, 1);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/issues?pagelen=10',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getBranches', () => {
+    it('should return branches with pagination metadata', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [{ name: 'main', target: { hash: 'abc123', author: { raw: 'Test' }, message: 'Init', date: '2023-01-01' }, links: { html: { href: 'https://bitbucket.org' } } }],
+          page: 1,
+          pagelen: 10,
+          next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getBranches('ws', 'repo');
+
+      expect(result.branches).toHaveLength(1);
+      expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should use opaque next URL directly when page starts with http', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getBranches(
+        'ws',
+        'repo',
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?page=3&pagelen=25'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?page=3&pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should include default pagelen in the request URL', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getBranches('ws', 'repo');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp branch pagelen to Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getBranches('ws', 'repo', undefined, 1);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/refs/branches?pagelen=10',
+        expect.any(Object)
+      );
+    });
+  });
+
+  describe('getCommits', () => {
+    it('should return commits with pagination metadata', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({
+          values: [{ hash: 'abc123def456', message: 'Fix bug', author: { raw: 'Dev' }, date: '2023-01-01', parents: [], links: { html: { href: 'https://bitbucket.org' } } }],
+          page: 1,
+          pagelen: 10,
+          next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/commits?page=2',
+        }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      const result = await api.getCommits('ws', 'repo');
+
+      expect(result.commits).toHaveLength(1);
+      expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/ws/repo/commits?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should use opaque next URL directly when page starts with http', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getCommits(
+        'ws',
+        'repo',
+        undefined,
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/commits?page=3&pagelen=25'
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/commits?page=3&pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should append branch to the URL when branch is provided', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getCommits('ws', 'repo', 'main');
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/commits/main?pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should support custom pagelen for commits', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getCommits('ws', 'repo', undefined, undefined, 50);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/commits?pagelen=50',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp commit pagelen to Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getCommits('ws', 'repo', undefined, undefined, 1);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/commits?pagelen=10',
+        expect.any(Object)
+      );
+    });
+  });
 });

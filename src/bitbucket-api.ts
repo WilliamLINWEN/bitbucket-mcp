@@ -415,19 +415,39 @@ export class BitbucketAPI {
     return this.makeRequest<Repository>(url);
   }
 
-  async getPullRequests(workspace: string, repoSlug: string, state?: string, page?: string): Promise<{ pullRequests: PullRequest[]; hasMore: boolean }> {
+  async getPullRequests(
+    workspace: string,
+    repoSlug: string,
+    state?: string | string[],
+    page?: string,
+    pagelen?: number
+  ): Promise<{ pullRequests: PullRequest[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests`;
-    if (page) {
+
+    if (page && page.startsWith('http')) {
       url = page;
-    } else if (state) {
-      url += `?state=${state}`;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (state) {
+        const states = Array.isArray(state) ? state : [state];
+        for (const s of states) {
+          queryParams.append('state', s);
+        }
+      }
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      url += `?${queryParams.toString()}`;
     }
 
     const response = await this.makeRequest<PaginatedResponse<PullRequest>>(url);
 
     return {
       pullRequests: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
@@ -463,49 +483,96 @@ export class BitbucketAPI {
     });
   }
 
-  async getIssues(workspace: string, repoSlug: string, state?: string, page?: string): Promise<{ issues: Issue[]; hasMore: boolean }> {
+  async getIssues(
+    workspace: string,
+    repoSlug: string,
+    state?: string,
+    page?: string,
+    pagelen?: number
+  ): Promise<{ issues: Issue[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/issues`;
-    if (page) {
+
+    if (page && page.startsWith('http')) {
       url = page;
-    } else if (state) {
-      url += `?state=${state}`;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (state) queryParams.append('state', state);
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      url += `?${queryParams.toString()}`;
     }
 
     const response = await this.makeRequest<PaginatedResponse<Issue>>(url);
 
     return {
       issues: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
-  async getBranches(workspace: string, repoSlug: string, page?: string): Promise<{ branches: Branch[]; hasMore: boolean }> {
+  async getBranches(
+    workspace: string,
+    repoSlug: string,
+    page?: string,
+    pagelen?: number
+  ): Promise<{ branches: Branch[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/refs/branches`;
-    if (page) {
+
+    if (page && page.startsWith('http')) {
       url = page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      url += `?${queryParams.toString()}`;
     }
 
     const response = await this.makeRequest<PaginatedResponse<Branch>>(url);
 
     return {
       branches: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
-  async getCommits(workspace: string, repoSlug: string, branch?: string, page?: string): Promise<{ commits: Commit[]; hasMore: boolean }> {
+  async getCommits(
+    workspace: string,
+    repoSlug: string,
+    branch?: string,
+    page?: string,
+    pagelen?: number
+  ): Promise<{ commits: Commit[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/commits`;
-    if (page) {
+
+    if (page && page.startsWith('http')) {
       url = page;
-    } else if (branch) {
-      url += `/${branch}`;
+    } else {
+      if (branch) {
+        url += `/${branch}`;
+      }
+      const queryParams = new URLSearchParams();
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      url += `?${queryParams.toString()}`;
     }
 
     const response = await this.makeRequest<PaginatedResponse<Commit>>(url);
 
     return {
       commits: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
