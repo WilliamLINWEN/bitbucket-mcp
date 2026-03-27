@@ -135,10 +135,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
       state: z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]).optional().describe("Filter by PR state"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, state }) => {
+    async ({ workspace, repo_slug, state, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state);
+        const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state, page, pagelen);
         const pullRequests = result.pullRequests;
 
         if (pullRequests.length === 0) {
@@ -162,11 +164,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "---",
         ].join("\n"));
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${pullRequests.length} pull requests in '${workspace}/${repo_slug}':\n\n${prText.join("\n")}`,
+              text: `Found ${pullRequests.length} pull requests in '${workspace}/${repo_slug}':\n\n${prText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };
@@ -490,10 +498,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       repo_slug: z.string().describe("Repository slug/name"),
       state: z.enum(["new", "open", "resolved", "on hold", "invalid", "duplicate", "wontfix", "closed"]).optional().describe("Filter by issue state"),
       kind: z.enum(["bug", "enhancement", "proposal", "task"]).optional().describe("Filter by issue kind"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, state, kind }) => {
+    async ({ workspace, repo_slug, state, kind, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getIssues(workspace, repo_slug, state);
+        const result = await bitbucketAPI.getIssues(workspace, repo_slug, state, page, pagelen);
         const issues = result.issues;
 
         if (issues.length === 0) {
@@ -511,11 +521,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         const filteredIssues = kind ? issues.filter(issue => issue.kind === kind) : issues;
 
         if (filteredIssues.length === 0) {
+          const paginationHint = result.hasMore ? ` No matching issues on this page; use the next page URL to continue searching.` : '';
           return {
             content: [
               {
                 type: "text",
-                text: `No issues found in '${workspace}/${repo_slug}' matching the specified criteria.`,
+                text: `No issues found in '${workspace}/${repo_slug}' matching the specified criteria.${paginationHint}${result.next ? `\nNext page: ${result.next}` : ''}`,
               },
             ],
           };
@@ -532,11 +543,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "---",
         ].join("\n"));
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${filteredIssues.length} issues in '${workspace}/${repo_slug}':\n\n${issueText.join("\n")}`,
+              text: `Found ${filteredIssues.length} issues in '${workspace}/${repo_slug}':\n\n${issueText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };
@@ -560,10 +577,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug }) => {
+    async ({ workspace, repo_slug, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getBranches(workspace, repo_slug);
+        const result = await bitbucketAPI.getBranches(workspace, repo_slug, page, pagelen);
         const branches = result.branches;
 
         if (branches.length === 0) {
@@ -587,11 +606,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "---",
         ].join("\n"));
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${branches.length} branches in '${workspace}/${repo_slug}':\n\n${branchText.join("\n")}`,
+              text: `Found ${branches.length} branches in '${workspace}/${repo_slug}':\n\n${branchText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };
@@ -616,11 +641,13 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
       branch: z.string().optional().describe("Branch name (defaults to main branch)"),
-      limit: z.number().min(1).max(50).optional().default(10).describe("Number of commits to retrieve (1-50, default: 10)"),
+      limit: z.number().min(1).max(50).optional().default(10).describe("Limit results to this many commits from the current page (1-50, default: 10). Use 'page' and 'pagelen' for real pagination."),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, branch, limit }) => {
+    async ({ workspace, repo_slug, branch, limit, page, pagelen }) => {
       try {
-        const result = await bitbucketAPI.getCommits(workspace, repo_slug, branch);
+        const result = await bitbucketAPI.getCommits(workspace, repo_slug, branch, page, pagelen);
         const commits = result.commits.slice(0, limit);
 
         if (commits.length === 0) {
@@ -643,11 +670,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "---",
         ].filter(line => line).join("\n"));
 
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
         return {
           content: [
             {
               type: "text",
-              text: `Found ${commits.length} recent commits in '${workspace}/${repo_slug}'${branch ? ` on branch '${branch}'` : ''}:\n\n${commitText.join("\n")}`,
+              text: `Found ${commits.length} recent commits in '${workspace}/${repo_slug}'${branch ? ` on branch '${branch}'` : ''}:\n\n${commitText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`,
             },
           ],
         };
