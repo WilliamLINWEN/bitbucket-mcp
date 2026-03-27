@@ -8,6 +8,7 @@ const configSchema = z.object({
   username: z.string().optional(),
   appPassword: z.string().optional(),
   apiToken: z.string().optional(),
+  workspace: z.string().optional(),
   
   // API settings
   baseUrl: z.string().url().default('https://api.bitbucket.org/2.0'),
@@ -53,6 +54,7 @@ class ConfigManager {
       username: process.env.BITBUCKET_USERNAME,
       appPassword: process.env.BITBUCKET_APP_PASSWORD,
       apiToken: process.env.BITBUCKET_API_TOKEN,
+      workspace: process.env.BITBUCKET_WORKSPACE,
       baseUrl: process.env.BITBUCKET_BASE_URL,
       timeout: process.env.BITBUCKET_TIMEOUT ? parseInt(process.env.BITBUCKET_TIMEOUT, 10) : undefined,
       retryAttempts: process.env.BITBUCKET_RETRY_ATTEMPTS ? parseInt(process.env.BITBUCKET_RETRY_ATTEMPTS, 10) : undefined,

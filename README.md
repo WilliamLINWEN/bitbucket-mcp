@@ -73,6 +73,7 @@ To create a User API token:
 
 | Variable | Default | Description |
 |---|---|---|
+| `BITBUCKET_WORKSPACE` | *(none)* | Default workspace used by all tools when `workspace` parameter is not provided |
 | `BITBUCKET_LOG_LEVEL` | `info` | Log verbosity: `error`, `warn`, `info`, `debug` |
 | `BITBUCKET_TIMEOUT` | `30000` | Request timeout in milliseconds (1000–60000) |
 | `BITBUCKET_ENABLE_METRICS` | `true` | Enable performance metrics collection (`true`/`false`) |
@@ -96,7 +97,8 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "args": ["/ABSOLUTE/PATH/TO/bitbucket_mcp/build/index.js"],
       "env": {
         "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
-        "BITBUCKET_API_TOKEN": "your-api-token"
+        "BITBUCKET_API_TOKEN": "your-api-token",
+        "BITBUCKET_WORKSPACE": "your-workspace-name"
       }
     }
   }
@@ -112,7 +114,8 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "args": ["C:\\ABSOLUTE\\PATH\\TO\\bitbucket_mcp\\build\\index.js"],
       "env": {
         "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
-        "BITBUCKET_API_TOKEN": "your-api-token"
+        "BITBUCKET_API_TOKEN": "your-api-token",
+        "BITBUCKET_WORKSPACE": "your-workspace-name"
       }
     }
   }
@@ -128,7 +131,8 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
       "args": ["bitbucket-mcp-server"],
       "env": {
         "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
-        "BITBUCKET_API_TOKEN": "your-api-token"
+        "BITBUCKET_API_TOKEN": "your-api-token",
+        "BITBUCKET_WORKSPACE": "your-workspace-name"
       }
     }
   }
@@ -136,6 +140,8 @@ Add this server to your MCP client configuration. For Claude Desktop, add to you
 ```
 
 > **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
+
+> **Tip:** Set `BITBUCKET_WORKSPACE` to your default workspace so you don't need to pass `workspace` on every tool call. You can still override it per-call by providing the `workspace` argument explicitly.
 
 ## Usage Examples
 
@@ -215,7 +221,7 @@ Show the last 5 commits on the main branch of myworkspace/myrepo
 Lists repositories in a Bitbucket workspace.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `role` (optional): Filter by user role (owner, admin, contributor, member)
 - `sort` (optional): Sort by (created_on, updated_on, name, size)
 
@@ -223,14 +229,14 @@ Lists repositories in a Bitbucket workspace.
 Gets detailed information about a specific repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 
 ### list-pull-requests
 Lists pull requests for a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `state` (optional): Filter by state (OPEN, MERGED, DECLINED, SUPERSEDED)
 
@@ -238,7 +244,7 @@ Lists pull requests for a repository.
 Gets detailed information about a specific pull request.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
 
@@ -246,7 +252,7 @@ Gets detailed information about a specific pull request.
 Creates a new pull request in a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `title` (required): Title of the pull request
 - `source_branch` (required): Source branch name (the branch with your changes)
@@ -261,7 +267,7 @@ Creates a new pull request in a repository.
 Updates the title and/or description of an existing pull request.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
 - `title` (optional): New title for the pull request
@@ -273,7 +279,7 @@ Updates the title and/or description of an existing pull request.
 Creates a comment on a pull request. This tool can create both regular comments and inline comments on specific files and line numbers.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
 - `content` (required): Comment content in plain text
@@ -287,7 +293,7 @@ Creates a comment on a pull request. This tool can create both regular comments 
 Lists all comments on a pull request, including inline comments and replies.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
 
@@ -295,7 +301,7 @@ Lists all comments on a pull request, including inline comments and replies.
 Gets detailed information about a specific comment on a pull request.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `pull_request_id` (required): Pull request ID
 - `comment_id` (required): Comment ID
@@ -304,7 +310,7 @@ Gets detailed information about a specific comment on a pull request.
 Lists issues for a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `state` (optional): Filter by state (new, open, resolved, on hold, invalid, duplicate, wontfix, closed)
 - `kind` (optional): Filter by kind (bug, enhancement, proposal, task)
@@ -313,14 +319,14 @@ Lists issues for a repository.
 Lists branches for a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 
 ### get-commits
 Gets recent commits for a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `branch` (optional): Specific branch name
 - `page` (optional): Page number or opaque next page URL from Bitbucket pagination
@@ -330,7 +336,7 @@ Gets recent commits for a repository.
 Gets detailed information about a specific commit in a repository.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `repo_slug` (required): Repository name/slug
 - `commit_hash` (required): Commit hash (full 40-char or short 7+ char)
 
@@ -338,7 +344,7 @@ Gets detailed information about a specific commit in a repository.
 Searches across repositories, pull requests, issues, and commits in a workspace.
 
 **Parameters:**
-- `workspace` (required): Bitbucket workspace name
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
 - `query` (required): Search query (searches in titles, descriptions, and content)
 - `types` (optional): Types of items to search (repositories, pull-requests, issues, commits) (default: `["repositories", "pull-requests", "issues"]`)
 - `limit` (optional): Maximum number of results per type (default: 10)
