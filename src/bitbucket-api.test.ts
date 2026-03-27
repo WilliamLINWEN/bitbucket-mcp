@@ -662,7 +662,7 @@ describe('BitbucketAPI', () => {
       expect(result.comments[1].inline?.path).toBe('src/main.ts');
       expect(result.hasMore).toBe(false);
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments',
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?pagelen=10',
         expect.any(Object)
       );
     });
@@ -687,6 +687,8 @@ describe('BitbucketAPI', () => {
         status: 200,
         json: vi.fn().mockResolvedValue({
           values: [{ id: 200, content: { raw: 'comment' } }],
+          page: 1,
+          pagelen: 10,
           next: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?page=2',
         }),
       };
@@ -695,6 +697,62 @@ describe('BitbucketAPI', () => {
       const result = await api.getPullRequestComments('ws', 'repo', 1);
 
       expect(result.hasMore).toBe(true);
+      expect(result.next).toBe('https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?page=2');
+      expect(result.page).toBe(1);
+      expect(result.pagelen).toBe(10);
+    });
+
+    it('should honor custom pagelen values above the default minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null, pagelen: 25 }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequestComments('ws', 'repo', 1, { pagelen: 25 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?pagelen=25',
+        expect.any(Object)
+      );
+    });
+
+    it('should clamp pagelen to the Bitbucket minimum', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null, pagelen: 10 }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequestComments('ws', 'repo', 1, { pagelen: 1 });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?pagelen=10',
+        expect.any(Object)
+      );
+    });
+
+    it('should treat next page URLs as opaque', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequestComments(
+        'ws',
+        'repo',
+        1,
+        { page: 'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?page=2&pagelen=50' }
+      );
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests/1/comments?page=2&pagelen=50',
+        expect.any(Object)
+      );
     });
   });
 

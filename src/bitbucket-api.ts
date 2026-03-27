@@ -144,6 +144,9 @@ export interface Comment {
 export interface PaginatedResponse<T> {
   values: T[];
   next?: string;
+  previous?: string;
+  page?: number;
+  pagelen?: number;
   size?: number;
 }
 
@@ -506,7 +509,7 @@ export class BitbucketAPI {
     repoSlug: string,
     pullRequestId: number,
     options?: string | { page?: string; pagelen?: number }
-  ): Promise<{ comments: Comment[]; hasMore: boolean }> {
+  ): Promise<{ comments: Comment[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
     let queryOptions: { page?: string; pagelen?: number } = {};
 
@@ -521,7 +524,9 @@ export class BitbucketAPI {
     } else {
       const queryParams = new URLSearchParams();
       if (queryOptions.page) queryParams.append('page', queryOptions.page);
-      if (queryOptions.pagelen) queryParams.append('pagelen', queryOptions.pagelen.toString());
+      
+      const pagelen = queryOptions.pagelen !== undefined ? Math.min(100, Math.max(10, queryOptions.pagelen)) : 10;
+      queryParams.append('pagelen', pagelen.toString());
 
       const queryString = queryParams.toString();
       if (queryString) {
@@ -533,7 +538,10 @@ export class BitbucketAPI {
 
     return {
       comments: response.values,
-      hasMore: !!response.next
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
     };
   }
 
