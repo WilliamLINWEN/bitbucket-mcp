@@ -366,10 +366,32 @@ export class BitbucketAPI {
     throw lastError || new Error('Text request failed after all retries');
   }
 
-  async listRepositories(workspace: string, page?: string): Promise<{ repositories: Repository[]; hasMore: boolean }> {
+  async listRepositories(
+    workspace: string,
+    options?: string | { role?: string; sort?: string; page?: string; pagelen?: number }
+  ): Promise<{ repositories: Repository[]; hasMore: boolean }> {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}`;
-    if (page) {
-      url = page;
+    let queryOptions: { role?: string; sort?: string; page?: string; pagelen?: number } = {};
+
+    if (typeof options === 'string') {
+      queryOptions.page = options;
+    } else if (options) {
+      queryOptions = options;
+    }
+
+    if (queryOptions.page && queryOptions.page.startsWith('http')) {
+      url = queryOptions.page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (queryOptions.role) queryParams.append('role', queryOptions.role);
+      if (queryOptions.sort) queryParams.append('sort', queryOptions.sort);
+      if (queryOptions.page) queryParams.append('page', queryOptions.page);
+      if (queryOptions.pagelen) queryParams.append('pagelen', queryOptions.pagelen.toString());
+
+      const queryString = queryParams.toString();
+      if (queryString) {
+        url += `?${queryString}`;
+      }
     }
 
     const response = await this.makeRequest<PaginatedResponse<Repository>>(url);
