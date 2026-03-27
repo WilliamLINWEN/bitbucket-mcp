@@ -56,14 +56,18 @@ export async function createServer(): Promise<{ server: McpServer; transport: St
   // Create server instance
   logger.debug('startup', 'Creating MCP server instance');
   logger.mark('server_creation_start');
-  const server = new McpServer({
-    name: "bitbucket-mcp",
-    version: "1.0.0",
-    capabilities: {
-      resources: {},
-      tools: {},
+  const server = new McpServer(
+    {
+      name: "bitbucket-mcp",
+      version: "1.0.0",
     },
-  });
+    {
+      capabilities: {
+        resources: {},
+        tools: {},
+      },
+    }
+  );
   logger.mark('server_creation_done');
   logger.measure('MCP server creation time', 'server_creation_start');
 
