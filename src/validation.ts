@@ -35,6 +35,24 @@ export function validateRepoSlug(repoSlug: string): boolean {
   }
 }
 
+// Resolve workspace from tool argument or BITBUCKET_WORKSPACE env var
+export function resolveWorkspace(workspace?: string): string {
+  const resolved = workspace ?? process.env.BITBUCKET_WORKSPACE;
+  if (resolved === undefined) {
+    throw new Error(
+      "workspace parameter is required. Provide it as a tool argument or set the BITBUCKET_WORKSPACE environment variable."
+    );
+  }
+  try {
+    return WorkspaceSchema.parse(resolved);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new Error(`Invalid workspace value: ${formatValidationError(error)}`);
+    }
+    throw error;
+  }
+}
+
 // Utility function to format validation errors
 export function formatValidationError(error: z.ZodError): string {
   return error.errors

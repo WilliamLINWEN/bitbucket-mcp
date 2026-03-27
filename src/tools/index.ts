@@ -4,6 +4,7 @@ import { BitbucketAPI } from "../bitbucket-api.js";
 import { withRequestTracking } from "../utils/request-tracking.js";
 import logger from "../debug-logger.js";
 import { metricsCollector } from "../metrics.js";
+import { resolveWorkspace } from "../validation.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -17,13 +18,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "list-repositories",
     "List repositories in a Bitbucket workspace",
     {
-      workspace: z.string().describe("Bitbucket workspace name (username or team name)"),
+      workspace: z.string().optional().describe("Bitbucket workspace name (username or team name). Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       role: z.enum(["owner", "admin", "contributor", "member"]).optional().describe("Filter by user role"),
       sort: z.enum(["created_on", "updated_on", "name", "size"]).optional().describe("Sort repositories by"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    withRequestTracking("list-repositories", async ({ workspace, role, sort, page, pagelen }) => {
+    withRequestTracking("list-repositories", async ({ workspace: ws, role, sort, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.listRepositories(workspace, { role, sort, page, pagelen });
         const repositories = result.repositories;
@@ -82,10 +84,11 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-repository",
     "Get detailed information about a specific repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
     },
-    async ({ workspace, repo_slug }) => {
+    async ({ workspace: ws, repo_slug }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const repo = await bitbucketAPI.getRepository(workspace, repo_slug);
 
@@ -132,7 +135,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "list-pull-requests",
     "List pull requests for a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       state: z.union([
         z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]),
@@ -141,7 +144,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, state, page, pagelen }) => {
+    async ({ workspace: ws, repo_slug, state, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state, page, pagelen);
         const pullRequests = result.pullRequests;
@@ -202,11 +206,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-pr-diff",
     "Get the diff/changes for a specific pull request",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
     },
-    async ({ workspace, repo_slug, pull_request_id }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const diff = await bitbucketAPI.getPullRequestDiff(workspace, repo_slug, pull_request_id);
 
@@ -247,7 +252,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "create-pr-comment",
     "Create a comment on a pull request",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
       content: z.string().min(1).describe("Comment content in plain text"),
@@ -255,7 +260,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       from_line: z.number().optional().describe("Line number in the old version of the file (for inline comments)"),
       to_line: z.number().optional().describe("Line number in the new version of the file (for inline comments)"),
     },
-    async ({ workspace, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         // Check if authentication is available for creating comments
         if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
@@ -347,13 +353,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "list-pr-comments",
     "List all comments on a pull request, including inline comments and replies",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, pull_request_id, page, pagelen }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.getPullRequestComments(workspace, repo_slug, pull_request_id, { page, pagelen });
         const comments = result.comments;
@@ -432,12 +439,13 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-pr-comment",
     "Get detailed information about a specific comment on a pull request",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
       comment_id: z.number().describe("Comment ID"),
     },
-    async ({ workspace, repo_slug, pull_request_id, comment_id }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id, comment_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const comment = await bitbucketAPI.getPullRequestComment(workspace, repo_slug, pull_request_id, comment_id);
 
@@ -500,14 +508,15 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "list-issues",
     "List issues for a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       state: z.enum(["new", "open", "resolved", "on hold", "invalid", "duplicate", "wontfix", "closed"]).optional().describe("Filter by issue state"),
       kind: z.enum(["bug", "enhancement", "proposal", "task"]).optional().describe("Filter by issue kind"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, state, kind, page, pagelen }) => {
+    async ({ workspace: ws, repo_slug, state, kind, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.getIssues(workspace, repo_slug, state, page, pagelen);
         const issues = result.issues;
@@ -581,12 +590,13 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "list-branches",
     "List branches for a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, page, pagelen }) => {
+    async ({ workspace: ws, repo_slug, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.getBranches(workspace, repo_slug, page, pagelen);
         const branches = result.branches;
@@ -644,13 +654,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-commits",
     "Get recent commits for a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       branch: z.string().optional().describe("Branch name (defaults to main branch)"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
-    async ({ workspace, repo_slug, branch, page, pagelen }) => {
+    async ({ workspace: ws, repo_slug, branch, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const result = await bitbucketAPI.getCommits(workspace, repo_slug, branch, page, pagelen);
         const commits = result.commits;
@@ -711,7 +722,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     },
     async ({ workspace }) => {
       try {
-        const testWorkspace = workspace || "atlassian"; // Use Atlassian's public workspace as default
+        const testWorkspace = workspace || process.env.BITBUCKET_WORKSPACE || "atlassian"; // Use Atlassian's public workspace as default
 
         console.error(`Testing connectivity to Bitbucket API with workspace: ${testWorkspace}`);
 
@@ -798,16 +809,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "search",
     "Search across repositories, pull requests, issues, and commits in a workspace",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       query: z.string().min(1).describe("Search query (searches in titles, descriptions, and content)"),
       types: z.array(z.enum(["repositories", "pull-requests", "issues", "commits"])).optional().default(["repositories", "pull-requests", "issues"]).describe("Types of items to search"),
       limit: z.number().min(1).max(50).optional().default(10).describe("Maximum number of results per type"),
     },
-    async ({ workspace, query, types, limit }) => {
+    async ({ workspace: ws, query, types, limit }) => {
       const searchResults: string[] = [];
       let totalResults = 0;
 
       try {
+        const workspace = resolveWorkspace(ws);
         // Search repositories
         if (types.includes("repositories")) {
           try {
@@ -1036,11 +1048,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-pull-request",
     "Get detailed information about a specific pull request",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
     },
-    async ({ workspace, repo_slug, pull_request_id }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const pr = await bitbucketAPI.getPullRequest(workspace, repo_slug, pull_request_id);
 
@@ -1086,13 +1099,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "update-pr-description",
     "Update the title and/or description of a pull request",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       pull_request_id: z.number().describe("Pull request ID"),
       title: z.string().optional().describe("New title for the pull request"),
       description: z.string().optional().describe("New description for the pull request"),
     },
-    async ({ workspace, repo_slug, pull_request_id, title, description }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id, title, description }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         if (!title && description === undefined) {
           return {
@@ -1171,11 +1185,12 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-commit",
     "Get detailed information about a specific commit in a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       commit_hash: z.string().min(7).describe("Commit hash (full 40-char or short 7+ char)"),
     },
-    withRequestTracking("get-commit", async ({ workspace, repo_slug, commit_hash }) => {
+    withRequestTracking("get-commit", async ({ workspace: ws, repo_slug, commit_hash }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         const commit = await bitbucketAPI.getCommit(workspace, repo_slug, commit_hash);
         const parentHashes = commit.parents.map((p) => p.hash.substring(0, 8)).join(", ") || "None";
@@ -1226,7 +1241,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "create-pull-request",
     "Create a new pull request in a repository",
     {
-      workspace: z.string().describe("Bitbucket workspace name"),
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       title: z.string().min(1).describe("Title of the pull request"),
       source_branch: z.string().describe("Source branch name (the branch with your changes)"),
@@ -1235,7 +1250,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       close_source_branch: z.boolean().optional().describe("Whether to close the source branch after the PR is merged"),
       reviewers: z.array(z.string()).optional().describe("List of reviewer account UUIDs (e.g. '{account-uuid}')"),
     },
-    async ({ workspace, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
+    async ({ workspace: ws, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
+      const workspace = resolveWorkspace(ws);
       try {
         // Auth guard — creating a PR always requires credentials
         if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
