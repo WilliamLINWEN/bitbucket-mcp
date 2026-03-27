@@ -134,7 +134,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().describe("Bitbucket workspace name"),
       repo_slug: z.string().describe("Repository slug/name"),
-      state: z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"]).optional().describe("Filter by PR state"),
+      state: z.array(z.enum(["OPEN", "MERGED", "DECLINED", "SUPERSEDED"])).optional().describe("Filter by PR state. Accepts one or more states: OPEN, MERGED, DECLINED, SUPERSEDED"),
       page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
       pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
@@ -143,12 +143,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         const result = await bitbucketAPI.getPullRequests(workspace, repo_slug, state, page, pagelen);
         const pullRequests = result.pullRequests;
 
+        const stateText = state?.length ? ` with state [${state.join(', ')}]` : '';
+
         if (pullRequests.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: `No pull requests found in '${workspace}/${repo_slug}'${state ? ` with state '${state}'` : ''}.`,
+                text: `No pull requests found in '${workspace}/${repo_slug}'${stateText}.`,
               },
             ],
           };

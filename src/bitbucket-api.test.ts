@@ -1052,6 +1052,22 @@ describe('BitbucketAPI', () => {
       );
     });
 
+    it('should support multiple state values as repeated query parameters', async () => {
+      const mockResponse = {
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ values: [], next: null }),
+      };
+      mockFetch.mockResolvedValue(mockResponse);
+
+      await api.getPullRequests('ws', 'repo', ['OPEN', 'MERGED']);
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.bitbucket.org/2.0/repositories/ws/repo/pullrequests?state=OPEN&state=MERGED&pagelen=10',
+        expect.any(Object)
+      );
+    });
+
     it('should clamp pull request pagelen to Bitbucket minimum', async () => {
       const mockResponse = {
         ok: true,

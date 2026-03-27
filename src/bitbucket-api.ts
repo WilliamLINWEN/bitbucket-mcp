@@ -418,7 +418,7 @@ export class BitbucketAPI {
   async getPullRequests(
     workspace: string,
     repoSlug: string,
-    state?: string,
+    state?: string | string[],
     page?: string,
     pagelen?: number
   ): Promise<{ pullRequests: PullRequest[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
@@ -428,7 +428,12 @@ export class BitbucketAPI {
       url = page;
     } else {
       const queryParams = new URLSearchParams();
-      if (state) queryParams.append('state', state);
+      if (state) {
+        const states = Array.isArray(state) ? state : [state];
+        for (const s of states) {
+          queryParams.append('state', s);
+        }
+      }
       if (page) queryParams.append('page', page);
       const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
       queryParams.append('pagelen', clampedPagelen.toString());
