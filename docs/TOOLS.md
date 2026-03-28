@@ -143,6 +143,32 @@ Gets detailed information about a specific commit in a repository.
 - `repo_slug` (required): Repository name/slug
 - `commit_hash` (required): Commit hash (full 40-char or short 7+ char)
 
+## Pipelines
+
+### list-pipelines
+Lists pipelines for a repository.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `page` (optional): Page number or opaque next page URL returned by Bitbucket pagination
+- `pagelen` (optional): Number of items per page (default: 10, min: 10, max: 100)
+
+### trigger-pipeline
+Triggers a new pipeline for a repository.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `ref_name` (optional): Name of the branch or tag
+- `ref_type` (optional): Type of reference (`branch` or `tag`)
+- `commit_hash` (optional): Full hash of the commit to run the pipeline on
+- `selector_type` (optional): Type of selector (e.g., 'custom', 'default')
+- `selector_pattern` (optional): Pattern for the selector (e.g., custom pipeline name)
+- `variables` (optional): Environment variables for the pipeline (key-value pairs)
+
+**Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pipelines: Write" permission.
+
 ## System & Search
 
 ### search

@@ -106,6 +106,48 @@ export interface Commit {
   };
 }
 
+export interface Pipeline {
+  uuid: string;
+  build_number: number;
+  creator: {
+    display_name: string;
+    username: string;
+  };
+  repository: {
+    full_name: string;
+    name: string;
+  };
+  target: {
+    type: string;
+    ref_type?: string;
+    ref_name?: string;
+    selector?: {
+      type: string;
+      pattern: string;
+    };
+    commit?: {
+      hash: string;
+    };
+  };
+  state: {
+    name: string;
+    result?: {
+      name: string;
+    };
+    stage?: {
+      name: string;
+    };
+  };
+  created_on: string;
+  updated_on: string;
+  completed_on?: string;
+  build_seconds_used?: number;
+  links: {
+    self: { href: string };
+    html: { href: string };
+  };
+}
+
 export interface Comment {
   id: number;
   content: {
@@ -739,5 +781,111 @@ export class BitbucketAPI {
         `Failed to retrieve commit '${commitHash}' from '${workspace}/${repoSlug}': ${error?.message || error}`
       );
     }
+  }
+
+  /**
+   * List pipelines for a repository.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param page Page number or next page URL
+   * @param pagelen Number of items per page
+   * @returns Paginated list of pipelines
+   */
+  async listPipelines(
+    workspace: string,
+    repoSlug: string,
+    page?: string,
+    pagelen?: number
+  ): Promise<{ pipelines: Pipeline[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
+    let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/`;
+
+    if (page && page.startsWith('http')) {
+      url = page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      queryParams.append('sort', '-created_on');
+      url += `?${queryParams.toString()}`;
+    }
+
+    const response = await this.makeRequest<PaginatedResponse<Pipeline>>(url);
+
+    return {
+      pipelines: response.values,
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
+    };
+  }
+
+  /**
+   * Trigger a new pipeline for a repository.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param target Pipeline target (branch, tag, or commit)
+   * @returns Created pipeline object
+   */
+  async triggerPipeline(
+    workspace: string,
+    repoSlug: string,
+    target: {
+      ref_type?: 'branch' | 'tag';
+      ref_name?: string;
+      commit_hash?: string;
+      selector_type?: string;
+      selector_pattern?: string;
+      variables?: Array<{ key: string; value: string }>;
+    }
+  ): Promise<Pipeline> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/`;
+
+    const body: any = {};
+
+    if (target.ref_type && target.ref_name) {
+      body.target = {
+        type: 'pipeline_ref_target',
+        ref_type: target.ref_type,
+        ref_name: target.ref_name
+      };
+      
+      if (target.commit_hash) {
+        body.target.commit = {
+          type: 'commit',
+          hash: target.commit_hash
+        };
+      }
+    } else if (target.commit_hash) {
+      body.target = {
+        type: 'pipeline_commit_target',
+        commit: {
+          type: 'commit',
+          hash: target.commit_hash
+        }
+      };
+    } else {
+      throw new Error('Either (ref_type and ref_name) or commit_hash must be provided');
+    }
+
+    if (target.selector_type && target.selector_pattern) {
+      body.target.selector = {
+        type: target.selector_type,
+        pattern: target.selector_pattern
+      };
+    }
+
+    if (target.variables && target.variables.length > 0) {
+      body.variables = target.variables;
+    }
+
+    return this.makeRequest<Pipeline>(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
   }
 }

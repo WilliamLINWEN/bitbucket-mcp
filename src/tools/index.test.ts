@@ -132,4 +132,73 @@ describe('registerTools', () => {
       process.env.BITBUCKET_WORKSPACE = originalWorkspaceEnv;
     }
   });
+
+  describe('Pipelines', () => {
+    it('triggers a pipeline with variables correctly', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        triggerPipeline: vi.fn().mockResolvedValue({
+          build_number: 123,
+          uuid: '{uuid}',
+          state: { name: 'SUCCESSFUL' },
+          created_on: '2024-03-28T00:00:00Z',
+          links: { html: { href: 'https://example.com' } }
+        }),
+      };
+      process.env.BITBUCKET_API_TOKEN = 'test-token';
+
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('trigger-pipeline');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+        ref_type: 'branch',
+        ref_name: 'main',
+        variables: {
+          DEBUG: 'true',
+          ENV: 'production'
+        }
+      });
+
+      const result = await tool!.handler(input);
+      expect(bitbucketAPI.triggerPipeline).toHaveBeenCalledWith('ws', 'repo', expect.objectContaining({
+        variables: [
+          { key: 'DEBUG', value: 'true' },
+          { key: 'ENV', value: 'production' }
+        ]
+      }));
+      expect(result.content[0].text).toContain('Pipeline #123');
+      
+      delete process.env.BITBUCKET_API_TOKEN;
+    });
+
+    it('rejects partial selector parameters', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        triggerPipeline: vi.fn(),
+      };
+      process.env.BITBUCKET_API_TOKEN = 'test-token';
+
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('trigger-pipeline');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+        ref_type: 'branch',
+        ref_name: 'main',
+        selector_type: 'custom'
+      });
+
+      const result = await tool!.handler(input);
+      expect(result.content[0].text).toContain('❌ Invalid parameters');
+      expect(result.content[0].text).toContain('must provide both \'selector_type\' and \'selector_pattern\'');
+      expect(bitbucketAPI.triggerPipeline).not.toHaveBeenCalled();
+      
+      delete process.env.BITBUCKET_API_TOKEN;
+    });
+  });
 });
