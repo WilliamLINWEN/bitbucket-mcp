@@ -1383,6 +1383,31 @@ describe('BitbucketAPI', () => {
           expect.any(Object)
         );
       });
+
+      it('should accept a valid Bitbucket pagination URL for the page parameter', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ values: [], next: null, page: 2, pagelen: 10 }),
+        });
+
+        const validNextUrl = 'https://api.bitbucket.org/2.0/repositories/ws/repo/pipelines/?page=2&pagelen=10&sort=-created_on';
+        await api.listPipelines('ws', 'repo', validNextUrl);
+
+        expect(mockFetch).toHaveBeenCalledWith(validNextUrl, expect.any(Object));
+      });
+
+      it('should reject a page URL from a different host to prevent SSRF', async () => {
+        await expect(
+          api.listPipelines('ws', 'repo', 'https://evil.example.com/steal-credentials')
+        ).rejects.toThrow('Invalid page URL for Bitbucket pipelines pagination.');
+      });
+
+      it('should reject a page URL for a different repository path to prevent SSRF', async () => {
+        await expect(
+          api.listPipelines('ws', 'repo', 'https://api.bitbucket.org/2.0/repositories/other-ws/other-repo/pipelines/')
+        ).rejects.toThrow('Invalid page URL for Bitbucket pipelines pagination.');
+      });
     });
 
     describe('triggerPipeline', () => {

@@ -109,15 +109,15 @@ export interface Commit {
 export interface Pipeline {
   uuid: string;
   build_number: number;
-  creator: {
+  creator?: {
     display_name: string;
     username: string;
   };
-  repository: {
+  repository?: {
     full_name: string;
     name: string;
   };
-  target: {
+  target?: {
     type: string;
     ref_type?: string;
     ref_name?: string;
@@ -139,7 +139,7 @@ export interface Pipeline {
     value?: string;
     secured?: boolean;
   }>;
-  state: {
+  state?: {
     name: string;
     result?: {
       name: string;
@@ -152,9 +152,9 @@ export interface Pipeline {
   updated_on: string;
   completed_on?: string;
   build_seconds_used?: number;
-  links: {
-    self: { href: string };
-    html: { href: string };
+  links?: {
+    self?: { href: string };
+    html?: { href: string };
   };
 }
 
@@ -810,6 +810,31 @@ export class BitbucketAPI {
     let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/`;
 
     if (page && page.startsWith('http')) {
+      // Only allow Bitbucket pagination URLs for this repository's pipelines
+      let pageUrl: URL;
+      let baseUrl: URL;
+      try {
+        pageUrl = new URL(page);
+        baseUrl = new URL(BITBUCKET_API_BASE);
+      } catch {
+        throw new Error("Invalid page URL for Bitbucket pipelines pagination.");
+      }
+
+      const isSameOrigin =
+        pageUrl.protocol === baseUrl.protocol &&
+        pageUrl.host === baseUrl.host;
+
+      const basePath = baseUrl.pathname.replace(/\/$/, "");
+      const expectedPathPrefix = `${basePath}/repositories/${workspace}/${repoSlug}/pipelines`;
+      const normalizedPath = pageUrl.pathname.replace(/\/$/, "");
+      const isExpectedPath =
+        normalizedPath === expectedPathPrefix ||
+        normalizedPath.startsWith(`${expectedPathPrefix}/`);
+
+      if (!isSameOrigin || !isExpectedPath) {
+        throw new Error("Invalid page URL for Bitbucket pipelines pagination.");
+      }
+
       url = page;
     } else {
       const queryParams = new URLSearchParams();

@@ -758,6 +758,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- list-branches: ✅",
                 "- get-commits: ✅",
                 "- get-commit: ✅",
+                "- list-pipelines: ✅",
+                "- trigger-pipeline: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
                 "- search: ✅",
                 "- get-metrics: ✅",
                 "",
@@ -1333,7 +1335,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       page: z.string().optional().describe("Page number or next page URL"),
-      pagelen: z.number().int().min(1).max(100).optional().describe("Number of items per page (default: 10, min: 1, max: 100)"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
@@ -1412,6 +1414,18 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
       const workspace = resolveWorkspace(ws);
       try {
+        // Check if authentication is available for triggering pipelines
+        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Authentication required: Triggering a pipeline requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+              },
+            ],
+          };
+        }
+
         // Validation: Must have either (ref_type + ref_name) OR commit_hash
         if (!(ref_type && ref_name) && !commit_hash) {
           return {

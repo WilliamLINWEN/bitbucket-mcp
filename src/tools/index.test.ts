@@ -134,6 +134,33 @@ describe('registerTools', () => {
   });
 
   describe('Pipelines', () => {
+    it('returns authentication error when triggering pipeline without credentials', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        triggerPipeline: vi.fn(),
+      };
+
+      // Ensure no auth env vars are set
+      delete process.env.BITBUCKET_API_TOKEN;
+      delete process.env.BITBUCKET_USERNAME;
+      delete process.env.BITBUCKET_APP_PASSWORD;
+
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('trigger-pipeline');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+        ref_type: 'branch',
+        ref_name: 'main',
+      });
+
+      const result = await tool!.handler(input);
+      expect(result.content[0].text).toContain('❌ Authentication required');
+      expect(bitbucketAPI.triggerPipeline).not.toHaveBeenCalled();
+    });
+
     it('triggers a pipeline with variables correctly', async () => {
       const server = new FakeServer();
       const bitbucketAPI = {
