@@ -167,6 +167,11 @@ Triggers a new pipeline for a repository.
 - `selector_pattern` (optional): Pattern for the selector (e.g., custom pipeline name)
 - `variables` (optional): Environment variables for the pipeline (key-value pairs)
 
+**Required parameter combinations:**
+- You must provide either:
+  - both `ref_type` and `ref_name` (to target a branch or tag), or
+  - `commit_hash` (to target a specific commit).
+- If you provide `selector_type` or `selector_pattern`, you must provide both; they must be supplied together to select a specific pipeline.
 **Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pipelines: Write" permission.
 
 ## System & Search
