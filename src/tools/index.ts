@@ -758,6 +758,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- list-branches: ✅",
                 "- get-commits: ✅",
                 "- get-commit: ✅",
+                "- list-pipelines: ✅",
+                "- trigger-pipeline: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
                 "- search: ✅",
                 "- get-metrics: ✅",
                 "",
@@ -1318,6 +1320,175 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
             {
               type: "text",
               text: `❌ Failed to create pull request in '${workspace}/${repo_slug}': ${errorMessage}${helpMessage}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: List pipelines
+  server.tool(
+    "list-pipelines",
+    "List pipelines for a repository",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      page: z.string().optional().describe("Page number or next page URL"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
+    },
+    async ({ workspace: ws, repo_slug, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        const result = await bitbucketAPI.listPipelines(workspace, repo_slug, page, pagelen);
+        const pipelines = result.pipelines;
+
+        if (pipelines.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No pipelines found for repository '${workspace}/${repo_slug}'.`,
+              },
+            ],
+          };
+        }
+
+        const pipelineText = pipelines.map((p) => [
+          `**Pipeline #${p.build_number}** (${p.uuid})`,
+          `  Status: ${p.state?.name || "unknown"}${p.state?.result ? ` | Result: ${p.state.result.name}` : ""}`,
+          `  Target: ${p.target?.ref_type || "commit"} ${p.target?.ref_name || p.target?.commit?.hash?.substring(0, 7) || "unknown"}`,
+          p.trigger ? `  Trigger: ${p.trigger.name || p.trigger.type}` : null,
+          p.variables && p.variables.length > 0
+            ? `  Variables: ${p.variables.map(v => v.secured ? `${v.key}=***` : `${v.key}=${v.value ?? ""}`).join(", ")}`
+            : null,
+          `  Creator: ${p.creator?.display_name || "unknown"} (@${p.creator?.username || "unknown"})`,
+          `  Created: ${p.created_on ? new Date(p.created_on).toLocaleString() : "unknown"}`,
+          p.completed_on ? `  Completed: ${new Date(p.completed_on).toLocaleString()}` : null,
+          p.build_seconds_used !== undefined ? `  Duration: ${Math.floor(p.build_seconds_used / 60)}m ${p.build_seconds_used % 60}s` : null,
+          `  URL: ${p.links?.html?.href || "N/A"}`,
+          "---",
+        ].filter(Boolean).join("\n"));
+
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Found ${pipelines.length} pipelines for '${workspace}/${repo_slug}':\n\n${pipelineText.join("\n")}${paginationText ? `\n\n${paginationText}` : ""}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve pipelines: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Trigger pipeline
+  server.tool(
+    "trigger-pipeline",
+    "Trigger a new pipeline for a repository",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      ref_type: z.enum(["branch", "tag"]).optional().describe("Type of reference (branch or tag)"),
+      ref_name: z.string().optional().describe("Name of the branch or tag"),
+      commit_hash: z.string().optional().describe("Full hash of the commit to run the pipeline on"),
+      selector_type: z.string().optional().describe("Type of selector (e.g., 'custom', 'default')"),
+      selector_pattern: z.string().optional().describe("Pattern for the selector (e.g., custom pipeline name)"),
+      variables: z.record(z.string()).optional().describe("Environment variables for the pipeline (key-value pairs)"),
+    },
+    async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        // Check if authentication is available for triggering pipelines
+        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Authentication required: Triggering a pipeline requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+              },
+            ],
+          };
+        }
+
+        // Validation: Must have either (ref_type + ref_name) OR commit_hash
+        if (!(ref_type && ref_name) && !commit_hash) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Invalid parameters: You must provide either both (ref_type and ref_name) or a commit_hash to trigger a pipeline.",
+              },
+            ],
+          };
+        }
+
+        // Validation: Selector must have both type and pattern if either is provided
+        if ((selector_type && !selector_pattern) || (!selector_type && selector_pattern)) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ Invalid parameters: When using a selector, you must provide both 'selector_type' and 'selector_pattern'.",
+              },
+            ],
+          };
+        }
+
+        const formattedVariables = variables ? Object.entries(variables).map(([key, value]) => ({ key, value })) : undefined;
+
+        const pipeline = await bitbucketAPI.triggerPipeline(workspace, repo_slug, {
+          ref_type: ref_type as 'branch' | 'tag',
+          ref_name,
+          commit_hash,
+          selector_type,
+          selector_pattern,
+          variables: formattedVariables,
+        });
+
+        const info = [
+          `✅ **Pipeline triggered successfully!**`,
+          "",
+          `**Pipeline #${pipeline.build_number}** (${pipeline.uuid})`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Status:** ${pipeline.state?.name || "unknown"}`,
+          pipeline.trigger ? `**Trigger:** ${pipeline.trigger.name || pipeline.trigger.type}` : null,
+          pipeline.variables && pipeline.variables.length > 0
+            ? `**Variables:** ${pipeline.variables.map(v => v.secured ? `${v.key}=***` : `${v.key}=${v.value ?? ""}`).join(", ")}`
+            : null,
+          `**Created:** ${pipeline.created_on ? new Date(pipeline.created_on).toLocaleString() : "unknown"}`,
+          `**URL:** ${pipeline.links?.html?.href || "N/A"}`,
+        ].filter(Boolean);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: info.join("\n"),
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to trigger pipeline: ${error instanceof Error ? error.message : 'Unknown error'}`,
             },
           ],
         };

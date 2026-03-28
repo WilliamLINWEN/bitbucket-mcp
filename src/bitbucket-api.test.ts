@@ -1346,4 +1346,188 @@ describe('BitbucketAPI', () => {
       );
     });
   });
+
+  describe('Pipelines', () => {
+    describe('listPipelines', () => {
+      it('should return a list of pipelines', async () => {
+        const mockPipelines = [
+          {
+            uuid: '{pipeline-uuid}',
+            build_number: 1,
+            creator: { display_name: 'Test User', username: 'testuser' },
+            state: { name: 'COMPLETED', result: { name: 'SUCCESSFUL' } },
+            created_on: '2024-01-01T00:00:00Z',
+            updated_on: '2024-01-01T00:05:00Z',
+            links: { html: { href: 'https://bitbucket.org/ws/repo/pipelines/1' } },
+            target: { type: 'pipeline_ref_target', ref_type: 'branch', ref_name: 'main' }
+          }
+        ];
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({
+            values: mockPipelines,
+            next: null,
+            page: 1,
+            pagelen: 10
+          }),
+        });
+
+        const result = await api.listPipelines('ws', 'repo');
+
+        expect(result.pipelines).toHaveLength(1);
+        expect(result.pipelines[0].build_number).toBe(1);
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.bitbucket.org/2.0/repositories/ws/repo/pipelines/?pagelen=10&sort=-created_on',
+          expect.any(Object)
+        );
+      });
+
+      it('should accept a valid Bitbucket pagination URL for the page parameter', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ values: [], next: null, page: 2, pagelen: 10 }),
+        });
+
+        const validNextUrl = 'https://api.bitbucket.org/2.0/repositories/ws/repo/pipelines/?page=2&pagelen=10&sort=-created_on';
+        await api.listPipelines('ws', 'repo', validNextUrl);
+
+        expect(mockFetch).toHaveBeenCalledWith(validNextUrl, expect.any(Object));
+      });
+
+      it('should reject a page URL from a different host to prevent SSRF', async () => {
+        await expect(
+          api.listPipelines('ws', 'repo', 'https://evil.example.com/steal-credentials')
+        ).rejects.toThrow('Invalid page URL for Bitbucket pipelines pagination.');
+      });
+
+      it('should reject a page URL for a different repository path to prevent SSRF', async () => {
+        await expect(
+          api.listPipelines('ws', 'repo', 'https://api.bitbucket.org/2.0/repositories/other-ws/other-repo/pipelines/')
+        ).rejects.toThrow('Invalid page URL for Bitbucket pipelines pagination.');
+      });
+    });
+
+    describe('triggerPipeline', () => {
+      it('should trigger a pipeline with branch target', async () => {
+        const mockPipeline = {
+          uuid: '{new-pipeline-uuid}',
+          build_number: 2,
+          state: { name: 'PENDING' },
+          created_on: '2024-03-28T00:00:00Z',
+          links: { html: { href: 'https://bitbucket.org/ws/repo/pipelines/2' } }
+        };
+
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 201,
+          json: vi.fn().mockResolvedValue(mockPipeline),
+        });
+
+        const result = await api.triggerPipeline('ws', 'repo', {
+          ref_type: 'branch',
+          ref_name: 'main',
+          variables: [{ key: 'VAR1', value: 'VAL1' }]
+        });
+
+        expect(result.build_number).toBe(2);
+        expect(mockFetch).toHaveBeenCalledWith(
+          'https://api.bitbucket.org/2.0/repositories/ws/repo/pipelines/',
+          expect.objectContaining({
+            method: 'POST',
+            body: JSON.stringify({
+              target: {
+                type: 'pipeline_ref_target',
+                ref_type: 'branch',
+                ref_name: 'main'
+              },
+              variables: [{ key: 'VAR1', value: 'VAL1' }]
+            })
+          })
+        );
+      });
+
+      it('should trigger a pipeline with commit target', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 201,
+          json: vi.fn().mockResolvedValue({ uuid: 'uuid' }),
+        });
+
+        await api.triggerPipeline('ws', 'repo', {
+          commit_hash: 'abcdef123456'
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            body: JSON.stringify({
+              target: {
+                type: 'pipeline_commit_target',
+                commit: {
+                  type: 'commit',
+                  hash: 'abcdef123456'
+                }
+              }
+            })
+          })
+        );
+      });
+
+      it('should trigger a pipeline with branch target and explicit commit', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 201,
+          json: vi.fn().mockResolvedValue({ uuid: 'uuid' }),
+        });
+
+        await api.triggerPipeline('ws', 'repo', {
+          ref_type: 'branch',
+          ref_name: 'main',
+          commit_hash: 'abcdef123456'
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            body: JSON.stringify({
+              target: {
+                type: 'pipeline_ref_target',
+                ref_type: 'branch',
+                ref_name: 'main',
+                commit: {
+                  type: 'commit',
+                  hash: 'abcdef123456'
+                }
+              }
+            })
+          })
+        );
+      });
+
+      it('should support custom selector', async () => {
+        mockFetch.mockResolvedValue({
+          ok: true,
+          status: 201,
+          json: vi.fn().mockResolvedValue({ uuid: 'uuid' }),
+        });
+
+        await api.triggerPipeline('ws', 'repo', {
+          ref_type: 'branch',
+          ref_name: 'main',
+          selector_type: 'custom',
+          selector_pattern: 'Deploy'
+        });
+
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.objectContaining({
+            body: expect.stringContaining('"selector":{"type":"custom","pattern":"Deploy"}')
+          })
+        );
+      });
+    });
+  });
 });
