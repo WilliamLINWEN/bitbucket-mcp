@@ -200,5 +200,41 @@ describe('registerTools', () => {
       
       delete process.env.BITBUCKET_API_TOKEN;
     });
+
+    it('handles missing links or other properties in list-pipelines gracefully', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        listPipelines: vi.fn().mockResolvedValue({
+          pipelines: [
+            {
+              build_number: 1,
+              uuid: '{uuid1}',
+              // state is missing or incomplete
+              // target is missing
+              // creator is missing
+              // links is missing
+            }
+          ],
+          hasMore: false
+        }),
+      };
+      process.env.BITBUCKET_API_TOKEN = 'test-token';
+
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('list-pipelines');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+      });
+
+      const result = await tool!.handler(input);
+      expect(result.content[0].text).toContain('Pipeline #1');
+      expect(result.content[0].text).toContain('Status: unknown');
+      expect(result.content[0].text).toContain('URL: N/A');
+      
+      delete process.env.BITBUCKET_API_TOKEN;
+    });
   });
 });

@@ -129,6 +129,16 @@ export interface Pipeline {
       hash: string;
     };
   };
+  trigger?: {
+    type: string;
+    name?: string;
+  };
+  variables?: Array<{
+    type?: string;
+    key: string;
+    value?: string;
+    secured?: boolean;
+  }>;
   state: {
     name: string;
     result?: {

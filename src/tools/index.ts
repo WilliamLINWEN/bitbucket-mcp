@@ -1333,7 +1333,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
       page: z.string().optional().describe("Page number or next page URL"),
-      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
+      pagelen: z.number().int().min(1).max(100).optional().describe("Number of items per page (default: 10, min: 1, max: 100)"),
     },
     async ({ workspace: ws, repo_slug, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
@@ -1354,13 +1354,17 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
 
         const pipelineText = pipelines.map((p) => [
           `**Pipeline #${p.build_number}** (${p.uuid})`,
-          `  Status: ${p.state.name}${p.state.result ? ` | Result: ${p.state.result.name}` : ""}`,
-          `  Target: ${p.target.ref_type || "commit"} ${p.target.ref_name || p.target.commit?.hash?.substring(0, 7) || "unknown"}`,
-          `  Creator: ${p.creator.display_name} (@${p.creator.username})`,
-          `  Created: ${new Date(p.created_on).toLocaleString()}`,
+          `  Status: ${p.state?.name || "unknown"}${p.state?.result ? ` | Result: ${p.state.result.name}` : ""}`,
+          `  Target: ${p.target?.ref_type || "commit"} ${p.target?.ref_name || p.target?.commit?.hash?.substring(0, 7) || "unknown"}`,
+          p.trigger ? `  Trigger: ${p.trigger.name || p.trigger.type}` : null,
+          p.variables && p.variables.length > 0
+            ? `  Variables: ${p.variables.map(v => v.secured ? `${v.key}=***` : `${v.key}=${v.value ?? ""}`).join(", ")}`
+            : null,
+          `  Creator: ${p.creator?.display_name || "unknown"} (@${p.creator?.username || "unknown"})`,
+          `  Created: ${p.created_on ? new Date(p.created_on).toLocaleString() : "unknown"}`,
           p.completed_on ? `  Completed: ${new Date(p.completed_on).toLocaleString()}` : null,
           p.build_seconds_used !== undefined ? `  Duration: ${Math.floor(p.build_seconds_used / 60)}m ${p.build_seconds_used % 60}s` : null,
-          `  URL: ${p.links.html.href}`,
+          `  URL: ${p.links?.html?.href || "N/A"}`,
           "---",
         ].filter(Boolean).join("\n"));
 
@@ -1448,10 +1452,14 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           "",
           `**Pipeline #${pipeline.build_number}** (${pipeline.uuid})`,
           `**Repository:** ${workspace}/${repo_slug}`,
-          `**Status:** ${pipeline.state.name}`,
-          `**Created:** ${new Date(pipeline.created_on).toLocaleString()}`,
-          `**URL:** ${pipeline.links.html.href}`,
-        ];
+          `**Status:** ${pipeline.state?.name || "unknown"}`,
+          pipeline.trigger ? `**Trigger:** ${pipeline.trigger.name || pipeline.trigger.type}` : null,
+          pipeline.variables && pipeline.variables.length > 0
+            ? `**Variables:** ${pipeline.variables.map(v => v.secured ? `${v.key}=***` : `${v.key}=${v.value ?? ""}`).join(", ")}`
+            : null,
+          `**Created:** ${pipeline.created_on ? new Date(pipeline.created_on).toLocaleString() : "unknown"}`,
+          `**URL:** ${pipeline.links?.html?.href || "N/A"}`,
+        ].filter(Boolean);
 
         return {
           content: [
