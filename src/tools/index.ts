@@ -1433,7 +1433,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error("tool-handler", `Failed to execute get-pipeline tool: ${errorMessage}`, {
-          workspace: ws,
+          workspace,
+          workspace_input: ws,
           repo_slug,
           pipeline_uuid
         });
