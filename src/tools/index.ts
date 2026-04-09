@@ -759,6 +759,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- get-commits: ✅",
                 "- get-commit: ✅",
                 "- list-pipelines: ✅",
+                "- get-pipeline: ✅",
                 "- trigger-pipeline: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
                 "- search: ✅",
                 "- get-metrics: ✅",
@@ -1390,6 +1391,58 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
             {
               type: "text",
               text: `❌ Failed to retrieve pipelines: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Get pipeline
+  server.tool(
+    "get-pipeline",
+    "Get details of a specific pipeline by UUID",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pipeline_uuid: z.string().describe("UUID of the pipeline to retrieve"),
+    },
+    async ({ workspace: ws, repo_slug, pipeline_uuid }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        const pipeline = await bitbucketAPI.getPipeline(workspace, repo_slug, pipeline_uuid);
+
+        const info = [
+          `**Pipeline #${pipeline.build_number}** (${pipeline.uuid})`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Status:** ${pipeline.state?.name || "unknown"}${pipeline.state?.result?.name ? ` (${pipeline.state.result.name})` : ""}`,
+          `**Created:** ${new Date(pipeline.created_on).toLocaleString()}`,
+          pipeline.completed_on ? `**Completed:** ${new Date(pipeline.completed_on).toLocaleString()}` : null,
+          pipeline.build_seconds_used !== undefined ? `**Duration:** ${pipeline.build_seconds_used} seconds` : null,
+          `**URL:** ${pipeline.links?.html?.href || "N/A"}`
+        ].filter(Boolean);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: info.join("\n"),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error("tool-handler", `Failed to execute get-pipeline tool: ${errorMessage}`, {
+          workspace,
+          workspace_input: ws,
+          repo_slug,
+          pipeline_uuid
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve pipeline: ${errorMessage}`,
             },
           ],
         };
