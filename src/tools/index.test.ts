@@ -263,5 +263,58 @@ describe('registerTools', () => {
       
       delete process.env.BITBUCKET_API_TOKEN;
     });
+
+    it('retrieves a specific pipeline gracefully', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        getPipeline: vi.fn().mockResolvedValue({
+          build_number: 42,
+          uuid: '{my-uuid}',
+          state: { name: 'SUCCESSFUL', result: { name: 'PASSED' } },
+          created_on: '2024-03-28T00:00:00Z',
+          completed_on: '2024-03-28T00:05:00Z',
+          build_seconds_used: 300,
+          links: { html: { href: 'https://example.com/pipeline' } }
+        }),
+      };
+      
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('get-pipeline');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+        pipeline_uuid: '{my-uuid}'
+      });
+
+      const result = await tool!.handler(input);
+      expect(bitbucketAPI.getPipeline).toHaveBeenCalledWith('ws', 'repo', '{my-uuid}');
+      expect(result.content[0].text).toContain('Pipeline #42');
+      expect(result.content[0].text).toContain('**Status:** SUCCESSFUL (PASSED)');
+      expect(result.content[0].text).toContain('**Duration:** 300 seconds');
+      expect(result.content[0].text).toContain('**URL:** https://example.com/pipeline');
+    });
+
+    it('handles get-pipeline errors gracefully', async () => {
+      const server = new FakeServer();
+      const bitbucketAPI = {
+        getPipeline: vi.fn().mockRejectedValue(new Error("Pipeline '{my-uuid}' not found in 'ws/repo'.")),
+      };
+      
+      registerTools(server as any, bitbucketAPI as any);
+      const tool = server.tools.get('get-pipeline');
+      expect(tool).toBeDefined();
+
+      const input = buildInput(tool!.schema, {
+        workspace: 'ws',
+        repo_slug: 'repo',
+        pipeline_uuid: '{my-uuid}'
+      });
+
+      const result = await tool!.handler(input);
+      expect(bitbucketAPI.getPipeline).toHaveBeenCalledWith('ws', 'repo', '{my-uuid}');
+      expect(result.content[0].text).toContain("❌ Failed to retrieve pipeline: Pipeline '{my-uuid}' not found in 'ws/repo'.");
+    });
   });
 });

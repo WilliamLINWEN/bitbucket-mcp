@@ -31,7 +31,7 @@ This MCP server provides comprehensive tools for Bitbucket integration:
 - **Pull Requests**: Full lifecycle support—list, get details, create, update, diff, and comment.
 - **Issues**: Query and filter repository issues.
 - **Source Code**: Explore branches and commits.
-- **Pipelines**: List and trigger Bitbucket pipelines for CI/CD.
+- **Pipelines**: List, get, and trigger Bitbucket pipelines for CI/CD.
 - **System & Search**: Cross-resource search and health monitoring.
 
 For a full list of available tools and their parameters, see the [Tool Reference](docs/TOOLS.md).

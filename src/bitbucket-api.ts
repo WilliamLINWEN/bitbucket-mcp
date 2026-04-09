@@ -794,6 +794,44 @@ export class BitbucketAPI {
   }
 
   /**
+   * Get a specific pipeline by UUID.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param pipelineUuid Pipeline UUID
+   * @returns Pipeline object
+   */
+  async getPipeline(
+    workspace: string,
+    repoSlug: string,
+    pipelineUuid: string
+  ): Promise<Pipeline> {
+    try {
+      const encodedUuid = encodeURIComponent(pipelineUuid);
+      const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/${encodedUuid}`;
+      return await this.makeRequest<Pipeline>(url);
+    } catch (error: any) {
+      if (error?.status === 404) {
+        throw new Error(`Pipeline '${pipelineUuid}' not found in '${workspace}/${repoSlug}'.`);
+      }
+      const apiError = new Error(
+        `Failed to retrieve pipeline '${pipelineUuid}' from '${workspace}/${repoSlug}': ${error?.message || error}`
+      );
+      
+      const endpoint = `/repositories/${workspace}/${repoSlug}/pipelines/${encodeURIComponent(pipelineUuid)}`;
+      const context = createApiErrorContext(endpoint, 'GET', {
+        metadata: {
+          workspace,
+          repository: repoSlug,
+          pipelineId: pipelineUuid
+        }
+      });
+      recordError(apiError, 'getPipeline', 'bitbucket-api', context);
+      
+      throw apiError;
+    }
+  }
+
+  /**
    * List pipelines for a repository.
    * @param workspace Bitbucket workspace name
    * @param repoSlug Repository slug/name

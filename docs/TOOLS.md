@@ -154,6 +154,14 @@ Lists pipelines for a repository.
 - `page` (optional): Page number or opaque next page URL returned by Bitbucket pagination
 - `pagelen` (optional): Number of items per page (default: 10, min: 10, max: 100)
 
+### get-pipeline
+Gets detailed information about a specific pipeline by UUID.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `pipeline_uuid` (required): UUID of the pipeline to retrieve
+
 ### trigger-pipeline
 Triggers a new pipeline for a repository.
 
