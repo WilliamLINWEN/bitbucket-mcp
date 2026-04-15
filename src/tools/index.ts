@@ -250,7 +250,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   // Tool: Create pull request comment
   server.tool(
     "create-pr-comment",
-    "Create a comment on a pull request",
+    "Create a comment on a pull request, or reply to an existing comment by specifying a parent comment ID",
     {
       workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
@@ -259,8 +259,9 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       file_path: z.string().optional().describe("Path to the file for inline comments"),
       from_line: z.number().optional().describe("Line number in the old version of the file (for inline comments)"),
       to_line: z.number().optional().describe("Line number in the new version of the file (for inline comments)"),
+      parent_id: z.number().optional().describe("ID of the parent comment to reply to"),
     },
-    async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line }) => {
+    async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line, parent_id }) => {
       const workspace = resolveWorkspace(ws);
       try {
         // Check if authentication is available for creating comments
@@ -287,19 +288,29 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           repo_slug,
           pull_request_id,
           content,
-          inlineOptions
+          inlineOptions,
+          parent_id
         );
 
         // Build the success message
         const successLines = [
-          `✅ **Comment created successfully on PR #${pull_request_id}**`,
+          parent_id
+            ? `✅ **Reply created successfully on PR #${pull_request_id}**`
+            : `✅ **Comment created successfully on PR #${pull_request_id}**`,
           "",
           `**Repository:** ${workspace}/${repo_slug}`,
           `**Comment ID:** ${comment.id}`,
+        ];
+
+        if (parent_id) {
+          successLines.push(`**Reply to:** Comment #${parent_id}`);
+        }
+
+        successLines.push(
           `**Author:** ${comment.user.display_name} (@${comment.user.username})`,
           `**Created:** ${new Date(comment.created_on).toLocaleString()}`,
           `**URL:** ${comment.links.html.href}`,
-        ];
+        );
 
         if (inlineOptions) {
           successLines.push("", `**Inline Comment Details:**`);
@@ -333,7 +344,9 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
         } else if (errorMessage.includes("403")) {
           helpMessage = "\n\n**Troubleshooting:**\n- You may not have permission to comment on this pull request\n- Ensure your app password has 'Pull requests: Write' permission";
         } else if (errorMessage.includes("404")) {
-          helpMessage = "\n\n**Troubleshooting:**\n- Verify the workspace, repository, and pull request ID are correct\n- The pull request may not exist or may be private";
+          helpMessage = parent_id
+            ? "\n\n**Troubleshooting:**\n- Verify the workspace, repository, and pull request ID are correct\n- The parent comment ID may be invalid — ensure the comment exists on this PR\n- The pull request may not exist or may be private"
+            : "\n\n**Troubleshooting:**\n- Verify the workspace, repository, and pull request ID are correct\n- The pull request may not exist or may be private";
         }
 
         return {
