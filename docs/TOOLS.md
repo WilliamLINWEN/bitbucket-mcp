@@ -67,7 +67,7 @@ Updates the title and/or description of an existing pull request.
 **Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
 
 ### create-pr-comment
-Creates a comment on a pull request. This tool can create both regular comments and inline comments on specific files and line numbers.
+Creates a comment on a pull request. This tool can create regular comments, inline comments on specific files and line numbers, or replies to existing comments.
 
 **Parameters:**
 - `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
@@ -77,6 +77,7 @@ Creates a comment on a pull request. This tool can create both regular comments 
 - `file_path` (optional): Path to the file for inline comments
 - `from_line` (optional): Line number in the old version of the file (for inline comments)
 - `to_line` (optional): Line number in the new version of the file (for inline comments)
+- `parent_id` (optional): ID of the parent comment to reply to. When specified, the new comment is created as a reply to the given comment
 
 **Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pull requests: Write" permission.
 
