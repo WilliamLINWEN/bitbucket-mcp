@@ -688,7 +688,8 @@ export class BitbucketAPI {
       path: string;           // The path to the file being commented on (required for inline)
       from?: number;          // The comment's anchor line in the old version of the file
       to?: number;            // The comment's anchor line in the new version of the file
-    }
+    },
+    parentId?: number
   ): Promise<Comment> {
     const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments`;
 
@@ -697,6 +698,13 @@ export class BitbucketAPI {
         raw: content
       }
     };
+
+    // Add parent comment information if replying to a comment
+    if (parentId !== undefined) {
+      body.parent = {
+        id: parentId
+      };
+    }
 
     // Add inline comment information if provided
     if (inlineOptions) {
