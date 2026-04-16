@@ -5,6 +5,7 @@
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717.svg?logo=github)](https://github.com/WilliamLINWEN/bitbucket-mcp)
 [![Publish to npm](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml)
+[![CodeQL](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml)
 
 A Model Context Protocol (MCP) server that provides tools for interacting with Bitbucket repositories, pull requests, issues, and more.
 
