@@ -1,9 +1,30 @@
 # Bitbucket MCP Server
 <img src="./images/logo.jpg" alt="Bitbucket MCP Logo" width="640" height="320">
 
+[![npm version](https://img.shields.io/npm/v/bitbucket-mcp-server.svg)](https://www.npmjs.com/package/bitbucket-mcp-server)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717.svg?logo=github)](https://github.com/WilliamLINWEN/bitbucket-mcp)
+[![Publish to npm](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml)
+
 A Model Context Protocol (MCP) server that provides tools for interacting with Bitbucket repositories, pull requests, issues, and more.
 
+## Safety
+
+This server is **read-heavy and non-destructive** — no DELETE operations are used against the Bitbucket API, so there is no risk of accidental data loss. Write operations are limited to creating and updating resources (e.g., pull requests, comments, pipelines).
+
 ## Quick Start
+
+### Using NPX (Recommended)
+
+Run directly without cloning the repository:
+
+```bash
+BITBUCKET_USERNAME="your-email@example.com" \
+BITBUCKET_API_TOKEN="your-api-token" \
+npx -y bitbucket-mcp-server@latest
+```
+
+### From Source
 
 1. **Install and Build:**
    ```bash
@@ -70,6 +91,24 @@ Additional configuration options for timeouts, caching, metrics, and retries are
 
 Add this server to your MCP client configuration (e.g., `claude_desktop_config.json`). See [CONFIGURATION.md](CONFIGURATION.md#mcp-client-configuration) for full examples for macOS, Linux, and Windows.
 
+**Using NPX (recommended):**
+```json
+{
+  "mcpServers": {
+    "bitbucket-mcp": {
+      "command": "npx",
+      "args": ["-y", "bitbucket-mcp-server@latest"],
+      "env": {
+        "BITBUCKET_USERNAME": "your-email@example.com",
+        "BITBUCKET_API_TOKEN": "your-api-token",
+        "BITBUCKET_WORKSPACE": "your-workspace"
+      }
+    }
+  }
+}
+```
+
+**Using local build:**
 ```json
 {
   "mcpServers": {
