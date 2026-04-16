@@ -1,9 +1,32 @@
 # Bitbucket MCP Server
 <img src="./images/logo.jpg" alt="Bitbucket MCP Logo" width="640" height="320">
 
+[![npm version](https://img.shields.io/npm/v/bitbucket-mcp-server.svg)](https://www.npmjs.com/package/bitbucket-mcp-server)
+[![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
+[![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717.svg?logo=github)](https://github.com/WilliamLINWEN/bitbucket-mcp)
+[![CI](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/ci.yml)
+[![Publish to npm](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml)
+[![CodeQL](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml)
+
 A Model Context Protocol (MCP) server that provides tools for interacting with Bitbucket repositories, pull requests, issues, and more.
 
+## Safety
+
+This server is **read-heavy and non-destructive** — no DELETE operations are used against the Bitbucket API, so there is no risk of accidental data loss. Write operations are limited to creating and updating resources (e.g., pull requests, comments, pipelines).
+
 ## Quick Start
+
+### Using NPX (Recommended)
+
+Run directly without cloning the repository:
+
+```bash
+BITBUCKET_USERNAME="your-email@example.com" \
+BITBUCKET_API_TOKEN="your-api-token" \
+npx -y bitbucket-mcp-server@latest
+```
+
+### From Source
 
 1. **Install and Build:**
    ```bash
@@ -70,6 +93,24 @@ Additional configuration options for timeouts, caching, metrics, and retries are
 
 Add this server to your MCP client configuration (e.g., `claude_desktop_config.json`). See [CONFIGURATION.md](CONFIGURATION.md#mcp-client-configuration) for full examples for macOS, Linux, and Windows.
 
+**Using NPX (recommended):**
+```json
+{
+  "mcpServers": {
+    "bitbucket-mcp": {
+      "command": "npx",
+      "args": ["-y", "bitbucket-mcp-server@latest"],
+      "env": {
+        "BITBUCKET_USERNAME": "your-email@example.com",
+        "BITBUCKET_API_TOKEN": "your-api-token",
+        "BITBUCKET_WORKSPACE": "your-workspace"
+      }
+    }
+  }
+}
+```
+
+**Using local build:**
 ```json
 {
   "mcpServers": {
@@ -105,6 +146,11 @@ Search for "authentication" across all repositories and pull requests
 
 See more examples for PRs, issues, and commits in the [Tool Reference](docs/TOOLS.md).
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18 or higher
+- npm (included with Node.js)
+
 ## Development
 
 - **Build**: `npm run build`
@@ -123,3 +169,11 @@ ISC
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## Links
+
+- [npm Package](https://www.npmjs.com/package/bitbucket-mcp-server)
+- [GitHub Repository](https://github.com/WilliamLINWEN/bitbucket-mcp)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Bitbucket REST API Documentation](https://developer.atlassian.com/cloud/bitbucket/rest/intro/)
+- [Bitbucket Cloud Documentation](https://support.atlassian.com/bitbucket-cloud/)

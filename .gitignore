@@ -97,11 +97,12 @@ public
 # TernJS port file
 .tern-port
 
-.github
-
 .vscode/
 
 data
 
 .junie
 .agents
+
+# Claude Code
+.claude/
