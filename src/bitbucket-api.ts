@@ -158,6 +158,29 @@ export interface Pipeline {
   };
 }
 
+export interface PipelineStep {
+  uuid: string;
+  name?: string;
+  started_on?: string;
+  completed_on?: string;
+  duration_in_seconds?: number;
+  build_seconds_used?: number;
+  run_number?: number;
+  max_time?: number;
+  image?: { name: string };
+  state?: {
+    name: string;
+    result?: { name: string };
+    stage?: { name: string };
+  };
+  trigger?: { type: string };
+  links?: {
+    self?: { href: string };
+    html?: { href: string };
+    log_file?: { href: string };
+  };
+}
+
 export interface Comment {
   id: number;
   content: {
@@ -968,5 +991,155 @@ export class BitbucketAPI {
       },
       body: JSON.stringify(body)
     });
+  }
+
+  /**
+   * List steps for a pipeline.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param pipelineUuid Pipeline UUID
+   * @param page Page number or next page URL
+   * @param pagelen Number of items per page
+   * @returns Paginated list of pipeline steps
+   */
+  async listPipelineSteps(
+    workspace: string,
+    repoSlug: string,
+    pipelineUuid: string,
+    page?: string,
+    pagelen?: number
+  ): Promise<{ steps: PipelineStep[]; hasMore: boolean; next?: string; page?: number; pagelen?: number }> {
+    const encodedPipelineUuid = encodeURIComponent(pipelineUuid);
+    let url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/${encodedPipelineUuid}/steps/`;
+
+    if (page && page.startsWith('http')) {
+      let pageUrl: URL;
+      let baseUrl: URL;
+      try {
+        pageUrl = new URL(page);
+        baseUrl = new URL(BITBUCKET_API_BASE);
+      } catch {
+        throw new Error("Invalid page URL for Bitbucket pipeline steps pagination.");
+      }
+
+      const isSameOrigin =
+        pageUrl.protocol === baseUrl.protocol &&
+        pageUrl.host === baseUrl.host;
+
+      const basePath = baseUrl.pathname.replace(/\/$/, "");
+      const expectedPathPrefix = `${basePath}/repositories/${workspace}/${repoSlug}/pipelines/${encodedPipelineUuid}/steps`;
+      const normalizedPath = pageUrl.pathname.replace(/\/$/, "");
+      const isExpectedPath =
+        normalizedPath === expectedPathPrefix ||
+        normalizedPath.startsWith(`${expectedPathPrefix}/`);
+
+      if (!isSameOrigin || !isExpectedPath) {
+        throw new Error("Invalid page URL for Bitbucket pipeline steps pagination.");
+      }
+
+      url = page;
+    } else {
+      const queryParams = new URLSearchParams();
+      if (page) queryParams.append('page', page);
+      const clampedPagelen = pagelen !== undefined ? Math.min(100, Math.max(10, pagelen)) : 10;
+      queryParams.append('pagelen', clampedPagelen.toString());
+      url += `?${queryParams.toString()}`;
+    }
+
+    const response = await this.makeRequest<PaginatedResponse<PipelineStep>>(url);
+
+    return {
+      steps: response.values,
+      hasMore: !!response.next,
+      next: response.next,
+      page: response.page,
+      pagelen: response.pagelen
+    };
+  }
+
+  /**
+   * Get a specific pipeline step by UUID.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param pipelineUuid Pipeline UUID
+   * @param stepUuid Step UUID
+   * @returns PipelineStep object
+   */
+  async getPipelineStep(
+    workspace: string,
+    repoSlug: string,
+    pipelineUuid: string,
+    stepUuid: string
+  ): Promise<PipelineStep> {
+    try {
+      const encodedPipelineUuid = encodeURIComponent(pipelineUuid);
+      const encodedStepUuid = encodeURIComponent(stepUuid);
+      const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/${encodedPipelineUuid}/steps/${encodedStepUuid}`;
+      return await this.makeRequest<PipelineStep>(url);
+    } catch (error: any) {
+      if (error?.status === 404) {
+        throw new Error(`Pipeline step '${stepUuid}' not found in pipeline '${pipelineUuid}' of '${workspace}/${repoSlug}'.`);
+      }
+      const apiError = new Error(
+        `Failed to retrieve pipeline step '${stepUuid}' from pipeline '${pipelineUuid}' in '${workspace}/${repoSlug}': ${error?.message || error}`
+      );
+
+      const endpoint = `/repositories/${workspace}/${repoSlug}/pipelines/${encodeURIComponent(pipelineUuid)}/steps/${encodeURIComponent(stepUuid)}`;
+      const context = createApiErrorContext(endpoint, 'GET', {
+        metadata: {
+          workspace,
+          repository: repoSlug,
+          pipelineId: pipelineUuid,
+          stepId: stepUuid
+        }
+      });
+      recordError(apiError, 'getPipelineStep', 'bitbucket-api', context);
+
+      throw apiError;
+    }
+  }
+
+  /**
+   * Get the log file for a pipeline step.
+   * @param workspace Bitbucket workspace name
+   * @param repoSlug Repository slug/name
+   * @param pipelineUuid Pipeline UUID
+   * @param stepUuid Step UUID
+   * @returns Plain text log content
+   */
+  async getPipelineStepLog(
+    workspace: string,
+    repoSlug: string,
+    pipelineUuid: string,
+    stepUuid: string
+  ): Promise<string> {
+    try {
+      const encodedPipelineUuid = encodeURIComponent(pipelineUuid);
+      const encodedStepUuid = encodeURIComponent(stepUuid);
+      const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pipelines/${encodedPipelineUuid}/steps/${encodedStepUuid}/log`;
+      return await this.makeTextRequest(url, {
+        headers: { 'Accept': 'application/octet-stream' }
+      }, { timeout: 60000 });
+    } catch (error: any) {
+      if (error?.status === 404) {
+        throw new Error(`Log not found for step '${stepUuid}' in pipeline '${pipelineUuid}' of '${workspace}/${repoSlug}'.`);
+      }
+      const apiError = new Error(
+        `Failed to retrieve log for step '${stepUuid}' from pipeline '${pipelineUuid}' in '${workspace}/${repoSlug}': ${error?.message || error}`
+      );
+
+      const endpoint = `/repositories/${workspace}/${repoSlug}/pipelines/${encodeURIComponent(pipelineUuid)}/steps/${encodeURIComponent(stepUuid)}/log`;
+      const context = createApiErrorContext(endpoint, 'GET', {
+        metadata: {
+          workspace,
+          repository: repoSlug,
+          pipelineId: pipelineUuid,
+          stepId: stepUuid
+        }
+      });
+      recordError(apiError, 'getPipelineStepLog', 'bitbucket-api', context);
+
+      throw apiError;
+    }
   }
 }
