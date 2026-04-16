@@ -4,6 +4,7 @@
 [![npm version](https://img.shields.io/npm/v/bitbucket-mcp-server.svg)](https://www.npmjs.com/package/bitbucket-mcp-server)
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)
 [![GitHub Repository](https://img.shields.io/badge/GitHub-Repository-181717.svg?logo=github)](https://github.com/WilliamLINWEN/bitbucket-mcp)
+[![CI](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/ci.yml)
 [![Publish to npm](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/publish.yml)
 [![CodeQL](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/WilliamLINWEN/bitbucket-mcp/actions/workflows/codeql.yml)
 
