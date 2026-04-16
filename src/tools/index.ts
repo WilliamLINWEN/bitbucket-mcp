@@ -774,6 +774,9 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "- list-pipelines: ✅",
                 "- get-pipeline: ✅",
                 "- trigger-pipeline: " + (isAuthenticated ? "✅" : "❌ (requires auth)"),
+                "- list-pipeline-steps: ✅",
+                "- get-pipeline-step: ✅",
+                "- get-pipeline-step-log: ✅",
                 "- search: ✅",
                 "- get-metrics: ✅",
                 "",
@@ -1555,6 +1558,188 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
             {
               type: "text",
               text: `❌ Failed to trigger pipeline: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: List pipeline steps
+  server.tool(
+    "list-pipeline-steps",
+    "List steps for a specific pipeline",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pipeline_uuid: z.string().describe("UUID of the pipeline"),
+      page: z.string().optional().describe("Page number or opaque next page URL returned by Bitbucket pagination"),
+      pagelen: z.number().int().min(10).max(100).optional().describe("Number of items per page (default: 10, min: 10, max: 100)"),
+    },
+    async ({ workspace: ws, repo_slug, pipeline_uuid, page, pagelen }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        const result = await bitbucketAPI.listPipelineSteps(workspace, repo_slug, pipeline_uuid, page, pagelen);
+        const steps = result.steps;
+
+        if (steps.length === 0) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No steps found for pipeline '${pipeline_uuid}' in '${workspace}/${repo_slug}'.`,
+              },
+            ],
+          };
+        }
+
+        const stepText = steps.map((s) => [
+          `**Step: ${s.name || "unnamed"}** (${s.uuid})`,
+          `  Status: ${s.state?.name || "unknown"}${s.state?.result ? ` | Result: ${s.state.result.name}` : ""}`,
+          s.image ? `  Image: ${s.image.name}` : null,
+          s.started_on ? `  Started: ${new Date(s.started_on).toLocaleString()}` : null,
+          s.completed_on ? `  Completed: ${new Date(s.completed_on).toLocaleString()}` : null,
+          s.duration_in_seconds !== undefined ? `  Duration: ${s.duration_in_seconds}s` : null,
+        ].filter(Boolean).join("\n")).join("\n---\n");
+
+        const paginationText = [
+          result.page !== undefined ? `Page: ${result.page}` : null,
+          result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
+          result.next ? `Next page: ${result.next}` : null,
+        ].filter(Boolean).join('\n');
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Found ${steps.length} steps for pipeline '${pipeline_uuid}' in '${workspace}/${repo_slug}':\n\n${stepText}${paginationText ? `\n\n${paginationText}` : ""}`,
+            },
+          ],
+        };
+      } catch (error) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve pipeline steps: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Get pipeline step
+  server.tool(
+    "get-pipeline-step",
+    "Get details of a specific step in a pipeline",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pipeline_uuid: z.string().describe("UUID of the pipeline"),
+      step_uuid: z.string().describe("UUID of the step to retrieve"),
+    },
+    async ({ workspace: ws, repo_slug, pipeline_uuid, step_uuid }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        const step = await bitbucketAPI.getPipelineStep(workspace, repo_slug, pipeline_uuid, step_uuid);
+
+        const info = [
+          `**Step: ${step.name || "unnamed"}** (${step.uuid})`,
+          `**Pipeline:** ${pipeline_uuid}`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Status:** ${step.state?.name || "unknown"}${step.state?.result?.name ? ` (${step.state.result.name})` : ""}`,
+          step.image ? `**Image:** ${step.image.name}` : null,
+          step.started_on ? `**Started:** ${new Date(step.started_on).toLocaleString()}` : null,
+          step.completed_on ? `**Completed:** ${new Date(step.completed_on).toLocaleString()}` : null,
+          step.duration_in_seconds !== undefined ? `**Duration:** ${step.duration_in_seconds} seconds` : null,
+          step.build_seconds_used !== undefined ? `**Build seconds used:** ${step.build_seconds_used}` : null,
+          step.max_time !== undefined ? `**Max time:** ${step.max_time} seconds` : null,
+          step.trigger ? `**Trigger:** ${step.trigger.type}` : null,
+          step.links?.log_file?.href ? `**Log URL:** ${step.links.log_file.href}` : null,
+        ].filter(Boolean);
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: info.join("\n"),
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error("tool-handler", `Failed to execute get-pipeline-step tool: ${errorMessage}`, {
+          workspace,
+          repo_slug,
+          pipeline_uuid,
+          step_uuid
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve pipeline step: ${errorMessage}`,
+            },
+          ],
+        };
+      }
+    }
+  );
+
+  // Tool: Get pipeline step log
+  server.tool(
+    "get-pipeline-step-log",
+    "Get the log output for a specific step in a pipeline",
+    {
+      workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
+      repo_slug: z.string().describe("Repository slug/name"),
+      pipeline_uuid: z.string().describe("UUID of the pipeline"),
+      step_uuid: z.string().describe("UUID of the step"),
+    },
+    async ({ workspace: ws, repo_slug, pipeline_uuid, step_uuid }) => {
+      const workspace = resolveWorkspace(ws);
+      try {
+        let log = await bitbucketAPI.getPipelineStepLog(workspace, repo_slug, pipeline_uuid, step_uuid);
+
+        const MAX_LOG_SIZE = 100 * 1024; // 100KB
+        let truncated = false;
+        if (log.length > MAX_LOG_SIZE) {
+          log = log.slice(-MAX_LOG_SIZE);
+          truncated = true;
+        }
+
+        const header = [
+          `**Pipeline Step Log**`,
+          `**Repository:** ${workspace}/${repo_slug}`,
+          `**Pipeline:** ${pipeline_uuid}`,
+          `**Step:** ${step_uuid}`,
+          truncated ? `\n⚠️ Log truncated to last 100KB (original size exceeded limit)\n` : "",
+          "---",
+          "",
+        ].join("\n");
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: header + log,
+            },
+          ],
+        };
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error("tool-handler", `Failed to execute get-pipeline-step-log tool: ${errorMessage}`, {
+          workspace,
+          repo_slug,
+          pipeline_uuid,
+          step_uuid
+        });
+        return {
+          content: [
+            {
+              type: "text",
+              text: `❌ Failed to retrieve pipeline step log: ${errorMessage}`,
             },
           ],
         };

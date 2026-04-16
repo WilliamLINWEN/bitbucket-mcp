@@ -184,6 +184,36 @@ Triggers a new pipeline for a repository.
 
 **Authentication Required:** This tool requires `BITBUCKET_API_TOKEN` environment variable to be set, and the token must have "Pipelines: Write" permission.
 
+### list-pipeline-steps
+Lists steps for a specific pipeline.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `pipeline_uuid` (required): UUID of the pipeline
+- `page` (optional): Page number or opaque next page URL returned by Bitbucket pagination
+- `pagelen` (optional): Number of items per page (default: 10, min: 10, max: 100)
+
+### get-pipeline-step
+Gets detailed information about a specific step in a pipeline.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `pipeline_uuid` (required): UUID of the pipeline
+- `step_uuid` (required): UUID of the step to retrieve
+
+### get-pipeline-step-log
+Gets the log output for a specific step in a pipeline.
+
+**Parameters:**
+- `workspace` (optional): Bitbucket workspace name. Defaults to `BITBUCKET_WORKSPACE` env var if not provided.
+- `repo_slug` (required): Repository name/slug
+- `pipeline_uuid` (required): UUID of the pipeline
+- `step_uuid` (required): UUID of the step
+
+**Note:** Log output is truncated to the last 100KB if the log is very large.
+
 ## System & Search
 
 ### search
