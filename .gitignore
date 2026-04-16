@@ -104,5 +104,5 @@ data
 .junie
 .agents
 
-# Claude Code skills - credentials
-.claude/skills/*/inspector-env.sh
+# Claude Code
+.claude/
