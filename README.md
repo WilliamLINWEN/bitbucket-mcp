@@ -144,6 +144,11 @@ Search for "authentication" across all repositories and pull requests
 
 See more examples for PRs, issues, and commits in the [Tool Reference](docs/TOOLS.md).
 
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) 18 or higher
+- npm (included with Node.js)
+
 ## Development
 
 - **Build**: `npm run build`
@@ -162,3 +167,11 @@ ISC
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## Links
+
+- [npm Package](https://www.npmjs.com/package/bitbucket-mcp-server)
+- [GitHub Repository](https://github.com/WilliamLINWEN/bitbucket-mcp)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Bitbucket REST API Documentation](https://developer.atlassian.com/cloud/bitbucket/rest/intro/)
+- [Bitbucket Cloud Documentation](https://support.atlassian.com/bitbucket-cloud/)
