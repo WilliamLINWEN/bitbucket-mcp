@@ -1478,7 +1478,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
       commit_hash: z.string().optional().describe("Full hash of the commit to run the pipeline on"),
       selector_type: z.string().optional().describe("Type of selector (e.g., 'custom', 'default')"),
       selector_pattern: z.string().optional().describe("Pattern for the selector (e.g., custom pipeline name)"),
-      variables: z.record(z.string()).optional().describe("Environment variables for the pipeline (key-value pairs)"),
+      variables: z.record(z.string(), z.string()).optional().describe("Environment variables for the pipeline (key-value pairs)"),
     },
     async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
       const workspace = resolveWorkspace(ws);
