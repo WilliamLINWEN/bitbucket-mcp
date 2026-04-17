@@ -148,7 +148,7 @@ See more examples for PRs, issues, and commits in the [Tool Reference](docs/TOOL
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 18 or higher
+- [Node.js](https://nodejs.org/) 20 or higher
 - npm (included with Node.js)
 
 ## Development
