@@ -13,8 +13,15 @@ const BITBUCKET_API_TOKEN = process.env.BITBUCKET_API_TOKEN;
 const isAuthenticated = !!(BITBUCKET_API_TOKEN || (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD));
 
 export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
+  const registerTool = (
+    name: string,
+    description: string,
+    inputSchema: Record<string, z.ZodTypeAny>,
+    cb: (...args: any[]) => unknown | Promise<unknown>
+  ) => server.registerTool(name, { description, inputSchema }, cb as any);
+
   // Tool: List repositories for a workspace
-  server.tool(
+  registerTool(
     "list-repositories",
     "List repositories in a Bitbucket workspace",
     {
@@ -80,7 +87,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get repository details
-  server.tool(
+  registerTool(
     "get-repository",
     "Get detailed information about a specific repository",
     {
@@ -131,7 +138,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List pull requests
-  server.tool(
+  registerTool(
     "list-pull-requests",
     "List pull requests for a repository",
     {
@@ -202,7 +209,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get pull request diff
-  server.tool(
+  registerTool(
     "get-pr-diff",
     "Get the diff/changes for a specific pull request",
     {
@@ -248,7 +255,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Create pull request comment
-  server.tool(
+  registerTool(
     "create-pr-comment",
     "Create a comment on a pull request, or reply to an existing comment by specifying a parent comment ID",
     {
@@ -362,7 +369,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List pull request comments
-  server.tool(
+  registerTool(
     "list-pr-comments",
     "List all comments on a pull request, including inline comments and replies",
     {
@@ -448,7 +455,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get a specific pull request comment
-  server.tool(
+  registerTool(
     "get-pr-comment",
     "Get detailed information about a specific comment on a pull request",
     {
@@ -517,7 +524,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List issues
-  server.tool(
+  registerTool(
     "list-issues",
     "List issues for a repository",
     {
@@ -599,7 +606,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List branches
-  server.tool(
+  registerTool(
     "list-branches",
     "List branches for a repository",
     {
@@ -663,7 +670,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get recent commits
-  server.tool(
+  registerTool(
     "get-commits",
     "Get recent commits for a repository",
     {
@@ -727,7 +734,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Health check - test API connectivity
-  server.tool(
+  registerTool(
     "health-check",
     "Check connectivity to Bitbucket API and validate credentials",
     {
@@ -824,7 +831,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Universal search across repositories, pull requests, issues, and commits
-  server.tool(
+  registerTool(
     "search",
     "Search across repositories, pull requests, issues, and commits in a workspace",
     {
@@ -1011,7 +1018,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get metrics and performance information
-  server.tool(
+  registerTool(
     "get-metrics",
     "Get server performance metrics and statistics",
     {},
@@ -1063,7 +1070,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get pull request details
-  server.tool(
+  registerTool(
     "get-pull-request",
     "Get detailed information about a specific pull request",
     {
@@ -1114,7 +1121,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Update pull request
-  server.tool(
+  registerTool(
     "update-pr-description",
     "Update the title and/or description of a pull request",
     {
@@ -1200,7 +1207,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get specific commit details
-  server.tool(
+  registerTool(
     "get-commit",
     "Get detailed information about a specific commit in a repository",
     {
@@ -1256,7 +1263,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     })
   );
   // Tool: Create pull request
-  server.tool(
+  registerTool(
     "create-pull-request",
     "Create a new pull request in a repository",
     {
@@ -1345,7 +1352,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List pipelines
-  server.tool(
+  registerTool(
     "list-pipelines",
     "List pipelines for a repository",
     {
@@ -1415,7 +1422,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get pipeline
-  server.tool(
+  registerTool(
     "get-pipeline",
     "Get details of a specific pipeline by UUID",
     {
@@ -1467,7 +1474,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Trigger pipeline
-  server.tool(
+  registerTool(
     "trigger-pipeline",
     "Trigger a new pipeline for a repository",
     {
@@ -1519,7 +1526,9 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
           };
         }
 
-        const formattedVariables = variables ? Object.entries(variables).map(([key, value]) => ({ key, value })) : undefined;
+        const formattedVariables = variables
+          ? Object.entries(variables).map(([key, value]) => ({ key, value: String(value) }))
+          : undefined;
 
         const pipeline = await bitbucketAPI.triggerPipeline(workspace, repo_slug, {
           ref_type: ref_type as 'branch' | 'tag',
@@ -1566,7 +1575,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: List pipeline steps
-  server.tool(
+  registerTool(
     "list-pipeline-steps",
     "List steps for a specific pipeline",
     {
@@ -1630,7 +1639,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get pipeline step
-  server.tool(
+  registerTool(
     "get-pipeline-step",
     "Get details of a specific step in a pipeline",
     {
@@ -1688,7 +1697,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   );
 
   // Tool: Get pipeline step log
-  server.tool(
+  registerTool(
     "get-pipeline-step-log",
     "Get the log output for a specific step in a pipeline",
     {
