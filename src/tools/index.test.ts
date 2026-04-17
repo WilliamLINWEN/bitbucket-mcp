@@ -11,8 +11,12 @@ type RegisteredTool = {
 class FakeServer {
   tools = new Map<string, RegisteredTool>();
 
-  tool(name: string, _description: string, schema: Record<string, z.ZodTypeAny>, handler: (args: any) => Promise<any>) {
-    this.tools.set(name, { schema, handler });
+  registerTool(
+    name: string,
+    config: { description?: string; inputSchema?: Record<string, z.ZodTypeAny> },
+    handler: (args: any) => Promise<any>
+  ) {
+    this.tools.set(name, { schema: config.inputSchema ?? {}, handler });
   }
 }
 
