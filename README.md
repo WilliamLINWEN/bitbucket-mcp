@@ -148,7 +148,7 @@ See more examples for PRs, issues, and commits in the [Tool Reference](docs/TOOL
 
 ## Prerequisites
 
-- [Node.js](https://nodejs.org/) 20.19+ or 22.12+
+- [Node.js](https://nodejs.org/) 20.19.x or >= 22.12.0
 - npm (included with Node.js)
 
 ## Development
