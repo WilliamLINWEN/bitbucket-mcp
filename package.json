@@ -36,7 +36,7 @@
   "devDependencies": {
     "@vitest/ui": "^2.1.8",
     "happy-dom": "^20.9.0",
-    "typescript": "^5.8.3",
+    "typescript": "^6.0.3",
     "vitest": "^2.1.8"
   },
   "dependencies": {
