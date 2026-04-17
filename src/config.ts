@@ -75,7 +75,7 @@ class ConfigManager {
     } catch (error) {
       if (error instanceof z.ZodError) {
         console.error('Configuration validation error:');
-        error.errors.forEach(err => {
+        error.issues.forEach(err => {
           console.error(`  ${err.path.join('.')}: ${err.message}`);
         });
         throw new Error('Invalid configuration');
@@ -167,7 +167,7 @@ class ConfigManager {
       this.config = configSchema.parse(newConfig);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        throw new Error(`Invalid configuration update: ${error.errors.map(e => e.message).join(', ')}`);
+        throw new Error(`Invalid configuration update: ${error.issues.map(e => e.message).join(', ')}`);
       }
       throw error;
     }

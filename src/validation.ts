@@ -55,7 +55,7 @@ export function resolveWorkspace(workspace?: string): string {
 
 // Utility function to format validation errors
 export function formatValidationError(error: z.ZodError): string {
-  return error.errors
+  return error.issues
     .map(err => `${err.path.join('.')}: ${err.message}`)
     .join(', ');
 }
