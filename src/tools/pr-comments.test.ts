@@ -30,7 +30,7 @@ describe("pr-comments tool", () => {
     const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pull_request_id: 1 });
     const res = await tool.handler(input);
     expect(api.getPullRequestComments).toHaveBeenCalled();
-    expect(res.content[0].text).toMatch(/comment/i);
+    expect(res.content[0].text).toContain("Found 1 comments on PR #1");
   });
 
   it("dispatches to single-comment when comment_id is present", async () => {

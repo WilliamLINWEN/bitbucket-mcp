@@ -54,7 +54,7 @@ async function listPrComments(
       };
     }
 
-    const commentText = comments.map((comment: any) => {
+    const commentText = comments.map((comment) => {
       const lines = [
         `**Comment #${comment.id}** by ${comment.user.display_name} (@${comment.user.username})`,
         `  Created: ${new Date(comment.created_on).toLocaleString()}`,
