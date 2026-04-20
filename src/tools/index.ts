@@ -8,6 +8,7 @@ import { resolveWorkspace } from "../validation.js";
 import { register as registerRepositories } from "./repositories.js";
 import { register as registerPullRequests } from "./pull-requests.js";
 import { register as registerPrComments } from "./pr-comments.js";
+import { register as registerCommits } from "./commits.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -26,6 +27,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   registerRepositories(server, bitbucketAPI);
   registerPullRequests(server, bitbucketAPI);
   registerPrComments(server, bitbucketAPI);
+  registerCommits(server, bitbucketAPI);
 
   // Tool: List repositories for a workspace
   registerTool(
