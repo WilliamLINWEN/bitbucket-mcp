@@ -59,6 +59,58 @@ This MCP server provides comprehensive tools for Bitbucket integration:
 
 For a full list of available tools and their parameters, see the [Tool Reference](docs/TOOLS.md).
 
+## Available Tools
+
+### Repository & code
+- **`repositories`** — List repositories in a workspace, or fetch details for a single repository when `repo_slug` is provided.
+- **`commits`** — List recent commits, or fetch a single commit when `commit_hash` is provided.
+- **`list-branches`** — List branches for a repository.
+- **`search`** — Full-text search across a repository.
+
+### Pull requests
+- **`pull-requests`** — List PRs, or fetch a single PR when `pr_id` is provided.
+- **`create-pull-request`** — Create a new pull request.
+- **`update-pr-description`** — Update an existing PR's description.
+- **`get-pr-diff`** — Fetch the diff for a PR.
+
+### PR comments
+- **`pr-comments`** — List PR comments, or fetch a single comment when `comment_id` is provided.
+- **`create-pr-comment`** — Add a comment (or inline comment, or reply) to a PR.
+
+### Issues
+- **`list-issues`** — List issues for a repository.
+
+### Pipelines
+- **`pipelines`** — List pipelines, or fetch a single pipeline when `pipeline_uuid` is provided.
+- **`trigger-pipeline`** — Trigger a new pipeline run.
+- **`pipeline-steps`** — Pipeline step operations. Use `action: "list" | "get" | "log"` to select behavior; `step_uuid` is required for `get` and `log`.
+
+### System
+- **`health-check`** — Server health status.
+- **`get-metrics`** — Request metrics.
+
+## Migrating from v1.x to v2.0
+
+v2.0 consolidates 24 tools into 16. Update tool names and parameters as follows:
+
+| Old (v1.x) | New (v2.0) | Parameter changes |
+|---|---|---|
+| `list-repositories` | `repositories` | Same parameters; `repo_slug` optional |
+| `get-repository` | `repositories` | Pass `repo_slug` |
+| `list-pull-requests` | `pull-requests` | Same parameters; `pr_id` optional |
+| `get-pull-request` | `pull-requests` | Pass `pr_id` (previously `pull_request_id` — rename) |
+| `list-pr-comments` | `pr-comments` | Same parameters; `comment_id` optional |
+| `get-pr-comment` | `pr-comments` | Pass `comment_id` |
+| `get-commits` | `commits` | Same parameters; `commit_hash` optional |
+| `get-commit` | `commits` | Pass `commit_hash` |
+| `list-pipelines` | `pipelines` | Same parameters; `pipeline_uuid` optional |
+| `get-pipeline` | `pipelines` | Pass `pipeline_uuid` |
+| `list-pipeline-steps` | `pipeline-steps` | Add `action: "list"` |
+| `get-pipeline-step` | `pipeline-steps` | Add `action: "get"` |
+| `get-pipeline-step-log` | `pipeline-steps` | Add `action: "log"` |
+
+All other tools retain their v1.x names and parameters.
+
 ## Installation
 
 1. Clone or download this repository.
