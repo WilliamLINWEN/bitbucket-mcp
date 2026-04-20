@@ -1,8 +1,18 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { BitbucketAPI } from "../bitbucket-api.js";
+import { BitbucketAPI, Repository } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+
+/**
+ * Derive the URL-safe repo slug from a Repository object.
+ * Uses the second segment of `full_name` ("workspace/slug"), falling back to
+ * `name` if `full_name` has an unexpected shape.
+ */
+function getRepoSlug(repo: Repository): string {
+  const parts = repo.full_name.split("/");
+  return parts[1] ?? repo.name;
+}
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -23,11 +33,13 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
 
       try {
         const workspace = resolveWorkspace(ws);
+
         // Search repositories
         if (types.includes("repositories")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace);
-            const matchingRepos = repoResult.repositories.filter(repo =>
+            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repos = repoResult.repositories;
+            const matchingRepos = repos.filter(repo =>
               repo.name.toLowerCase().includes(query.toLowerCase()) ||
               (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
             ).slice(0, limit);
@@ -44,24 +56,33 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
               });
               totalResults += matchingRepos.length;
             }
+
+            // Coverage note
+            const coverageNote = repoResult.next
+              ? `_(Searched ${repos.length} repositories — more available, refine query for complete results)_`
+              : `_(Searched ${repos.length} repositories)_`;
+            searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 📁 Repositories - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
-        // Search pull requests (sample from a few repositories)
+        // Search pull requests
         if (types.includes("pull-requests")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace);
-            const repos = repoResult.repositories.slice(0, 3); // Search in first 3 repos to avoid rate limits
+            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repos = repoResult.repositories;
+            let prCount = 0;
 
             for (const repo of repos) {
+              if (prCount >= limit) break;
+              const slug = getRepoSlug(repo);
               try {
-                const prResult = await bitbucketAPI.getPullRequests(workspace, repo.name);
+                const prResult = await bitbucketAPI.getPullRequests(workspace, slug, undefined, undefined, undefined);
                 const matchingPRs = prResult.pullRequests.filter(pr =>
                   pr.title.toLowerCase().includes(query.toLowerCase()) ||
                   (pr.description && pr.description.toLowerCase().includes(query.toLowerCase()))
-                ).slice(0, Math.ceil(limit / repos.length));
+                ).slice(0, limit - prCount);
 
                 if (matchingPRs.length > 0) {
                   if (totalResults === 0 || !searchResults.some(r => r.includes("Pull Requests"))) {
@@ -77,29 +98,40 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                     ].join("\n"));
                   });
                   totalResults += matchingPRs.length;
+                  prCount += matchingPRs.length;
                 }
               } catch (error) {
-                // Silently continue if PR search fails for a repo
+                const msg = error instanceof Error ? error.message : "Unknown error";
+                searchResults.push(`⚠️ Failed to search PRs in ${repo.name}: ${msg}`);
               }
             }
+
+            // Coverage note
+            const coverageNote = repoResult.next
+              ? `_(Searched ${repos.length} repositories for PRs — more available, refine query for complete results)_`
+              : `_(Searched ${repos.length} repositories for PRs)_`;
+            searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 🔀 Pull Requests - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
-        // Search issues (sample from a few repositories)
+        // Search issues
         if (types.includes("issues")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace);
-            const repos = repoResult.repositories.slice(0, 3); // Search in first 3 repos
+            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repos = repoResult.repositories;
+            let issueCount = 0;
 
             for (const repo of repos) {
+              if (issueCount >= limit) break;
+              const slug = getRepoSlug(repo);
               try {
-                const issueResult = await bitbucketAPI.getIssues(workspace, repo.name);
+                const issueResult = await bitbucketAPI.getIssues(workspace, slug, undefined, undefined, undefined);
                 const matchingIssues = issueResult.issues.filter(issue =>
                   issue.title.toLowerCase().includes(query.toLowerCase()) ||
                   (issue.content?.raw && issue.content.raw.toLowerCase().includes(query.toLowerCase()))
-                ).slice(0, Math.ceil(limit / repos.length));
+                ).slice(0, limit - issueCount);
 
                 if (matchingIssues.length > 0) {
                   if (totalResults === 0 || !searchResults.some(r => r.includes("Issues"))) {
@@ -115,28 +147,39 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                     ].join("\n"));
                   });
                   totalResults += matchingIssues.length;
+                  issueCount += matchingIssues.length;
                 }
               } catch (error) {
-                // Silently continue if issue search fails for a repo
+                const msg = error instanceof Error ? error.message : "Unknown error";
+                searchResults.push(`⚠️ Failed to search issues in ${repo.name}: ${msg}`);
               }
             }
+
+            // Coverage note
+            const coverageNote = repoResult.next
+              ? `_(Searched ${repos.length} repositories for issues — more available, refine query for complete results)_`
+              : `_(Searched ${repos.length} repositories for issues)_`;
+            searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 🐛 Issues - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
-        // Search commits (sample from a few repositories)
+        // Search commits
         if (types.includes("commits")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace);
-            const repos = repoResult.repositories.slice(0, 2); // Search in first 2 repos
+            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repos = repoResult.repositories;
+            let commitCount = 0;
 
             for (const repo of repos) {
+              if (commitCount >= limit) break;
+              const slug = getRepoSlug(repo);
               try {
-                const commitResult = await bitbucketAPI.getCommits(workspace, repo.name);
+                const commitResult = await bitbucketAPI.getCommits(workspace, slug, undefined, undefined, undefined);
                 const matchingCommits = commitResult.commits.filter(commit =>
                   commit.message.toLowerCase().includes(query.toLowerCase())
-                ).slice(0, Math.ceil(limit / repos.length));
+                ).slice(0, limit - commitCount);
 
                 if (matchingCommits.length > 0) {
                   if (totalResults === 0 || !searchResults.some(r => r.includes("Commits"))) {
@@ -152,22 +195,33 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                     ].join("\n"));
                   });
                   totalResults += matchingCommits.length;
+                  commitCount += matchingCommits.length;
                 }
               } catch (error) {
-                // Silently continue if commit search fails for a repo
+                const msg = error instanceof Error ? error.message : "Unknown error";
+                searchResults.push(`⚠️ Failed to search commits in ${repo.name}: ${msg}`);
               }
             }
+
+            // Coverage note
+            const coverageNote = repoResult.next
+              ? `_(Searched ${repos.length} repositories for commits — more available, refine query for complete results)_`
+              : `_(Searched ${repos.length} repositories for commits)_`;
+            searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 💾 Commits - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
         if (totalResults === 0) {
+          // Even when no results found, surface any warnings collected
+          const warnings = searchResults.filter(r => r.startsWith("⚠️") || r.includes("more available") || r.startsWith("_(Searched"));
+          const warningText = warnings.length > 0 ? `\n\n${warnings.join("\n")}` : "";
           return {
             content: [
               {
                 type: "text",
-                text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.`,
+                text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.${warningText}`,
               },
             ],
           };
