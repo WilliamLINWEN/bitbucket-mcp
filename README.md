@@ -99,8 +99,8 @@ v2.0 consolidates 24 tools into 16. Update tool names and parameters as follows:
 | `get-repository` | `repositories` | Pass `repo_slug` |
 | `list-pull-requests` | `pull-requests` | Same parameters; `pr_id` optional |
 | `get-pull-request` | `pull-requests` | Pass `pr_id` (previously `pull_request_id` — rename) |
-| `list-pr-comments` | `pr-comments` | Same parameters; `comment_id` optional |
-| `get-pr-comment` | `pr-comments` | Pass `comment_id` |
+| `list-pr-comments` | `pr-comments` | `pull_request_id` → `pr_id` (matches `pull-requests`); `comment_id` optional |
+| `get-pr-comment` | `pr-comments` | `pull_request_id` → `pr_id`; pass `comment_id` |
 | `get-commits` | `commits` | Same parameters; `commit_hash` optional |
 | `get-commit` | `commits` | Pass `commit_hash` |
 | `list-pipelines` | `pipelines` | Same parameters; `pipeline_uuid` optional |

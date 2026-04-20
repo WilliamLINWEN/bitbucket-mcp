@@ -15,17 +15,17 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
-      pull_request_id: z.number().describe("Pull request ID"),
+      pr_id: z.number().describe("Pull request ID"),
       comment_id: z.number().optional().describe("Comment ID. If provided, returns a single comment; otherwise lists."),
       page: z.string().optional().describe("(list only) Page number or opaque next page URL"),
       pagelen: z.number().int().min(10).max(100).optional().describe("(list only) Items per page (10-100, default 10)"),
     },
-    withRequestTracking("pr-comments", async ({ workspace: ws, repo_slug, pull_request_id, comment_id, page, pagelen }) => {
+    withRequestTracking("pr-comments", async ({ workspace: ws, repo_slug, pr_id, comment_id, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
       if (comment_id !== undefined) {
-        return getPrComment(bitbucketAPI, workspace, repo_slug, pull_request_id, comment_id);
+        return getPrComment(bitbucketAPI, workspace, repo_slug, pr_id, comment_id);
       }
-      return listPrComments(bitbucketAPI, workspace, repo_slug, pull_request_id, { page, pagelen });
+      return listPrComments(bitbucketAPI, workspace, repo_slug, pr_id, { page, pagelen });
     }),
   );
 

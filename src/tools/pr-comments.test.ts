@@ -27,7 +27,7 @@ describe("pr-comments tool", () => {
     const server = new FakeServer();
     register(server as any, api as any);
     const tool = server.tools.get("pr-comments")!;
-    const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pull_request_id: 1 });
+    const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pr_id: 1 });
     const res = await tool.handler(input);
     expect(api.getPullRequestComments).toHaveBeenCalled();
     expect(res.content[0].text).toContain("Found 1 comments on PR #1");
@@ -46,7 +46,7 @@ describe("pr-comments tool", () => {
     const server = new FakeServer();
     register(server as any, api as any);
     const tool = server.tools.get("pr-comments")!;
-    const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pull_request_id: 1, comment_id: 99 });
+    const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pr_id: 1, comment_id: 99 });
     const res = await tool.handler(input);
     expect(api.getPullRequestComment).toHaveBeenCalledWith("ws", "r", 1, 99);
     expect(res.content[0].text).toContain("#99");
