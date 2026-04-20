@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { BitbucketAPI } from "../bitbucket-api.js";
 import { metricsCollector } from "../metrics.js";
+import { withRequestTracking } from "../utils/request-tracking.js";
 import { makeRegister } from "./helpers.js";
 
 // Environment variables for authentication
@@ -20,7 +21,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().optional().describe("Optional workspace to test access"),
     },
-    async ({ workspace }) => {
+    withRequestTracking("health-check", async ({ workspace }) => {
       try {
         const testWorkspace = workspace || process.env.BITBUCKET_WORKSPACE || "atlassian"; // Use Atlassian's public workspace as default
 
@@ -100,7 +101,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
           ],
         };
       }
-    }
+    })
   );
 
   // Tool: Get metrics and performance information
@@ -108,10 +109,14 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     "get-metrics",
     "Get server performance metrics and statistics",
     {},
-    async () => {
+    withRequestTracking("get-metrics", async () => {
       try {
         const metrics = metricsCollector.getMetrics();
         const insights = metricsCollector.getPerformanceInsights();
+
+        const successRate = metrics.totalRequests === 0
+          ? "N/A (0 requests)"
+          : `${((metrics.successfulRequests / metrics.totalRequests) * 100).toFixed(1)}%`;
 
         const metricsText = [
           "# 📊 Bitbucket MCP Server Metrics",
@@ -120,7 +125,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
           `**Total Requests:** ${metrics.totalRequests}`,
           `**Successful Requests:** ${metrics.successfulRequests}`,
           `**Failed Requests:** ${metrics.failedRequests}`,
-          `**Success Rate:** ${((metrics.successfulRequests / metrics.totalRequests) * 100).toFixed(1)}%`,
+          `**Success Rate:** ${successRate}`,
           "",
           "## Performance",
           `**Average Response Time:** ${metrics.averageResponseTime.toFixed(0)}ms`,
@@ -152,6 +157,6 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
           ],
         };
       }
-    }
+    })
   );
 }
