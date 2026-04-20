@@ -29,21 +29,21 @@ describe("pull-requests tool", () => {
       getPullRequest: vi.fn().mockResolvedValue({
         id: 1, title: "t", state: "OPEN",
         author: { display_name: "u", username: "u" },
-        source: { branch: { name: "s" } },
-        destination: { branch: { name: "d" } },
+        source: { branch: { name: "s" }, repository: { full_name: "ws/r" } },
+        destination: { branch: { name: "d" }, repository: { full_name: "ws/r" } },
         created_on: "2024-01-01T00:00:00Z",
         updated_on: "2024-01-01T00:00:00Z",
         links: { html: { href: "http://x" } },
-        summary: { raw: "" },
-        reviewers: [], participants: [],
+        description: "",
       }),
     };
     const server = new FakeServer();
     register(server as any, api as any);
     const tool = server.tools.get("pull-requests")!;
     const input = parse(tool.schema, { workspace: "ws", repo_slug: "r", pr_id: 1 });
-    await tool.handler(input);
+    const res = await tool.handler(input);
     expect(api.getPullRequest).toHaveBeenCalledWith("ws", "r", 1);
+    expect(res.content[0].text).toContain("Pull Request #1");
   });
 
   it("registers relocated create-pull-request, update-pr-description, get-pr-diff", () => {
