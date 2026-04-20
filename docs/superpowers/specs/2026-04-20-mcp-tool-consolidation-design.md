@@ -76,12 +76,31 @@ Each module exports a `register(server, api)` function. `index.ts` calls them in
 
 ## Testing
 
+### Unit tests (vitest)
+
 - Split `src/tools/index.test.ts` to mirror the new file layout, or keep one file with `describe` blocks per tool — implementer's choice, pick whichever keeps individual files under ~500 lines.
 - Per merged tool, cover:
   - List branch (no ID parameter).
   - Single branch (ID parameter provided).
   - Error path (invalid parameter combinations).
 - `pipeline-steps` specifically: one test per `action` value plus one test per rejected invalid action/parameter combination.
+
+### End-to-end smoke tests (test-mcp-tool skill)
+
+After the unit tests pass, use the project-local `test-mcp-tool` skill at `.claude/skills/test-mcp-tool/` to verify each merged tool works end-to-end via MCP Inspector against the real Bitbucket API. The skill builds the server, launches the inspector, fills parameters, runs the tool, and checks the result.
+
+Run one invocation per merged tool (and per `pipeline-steps` action):
+
+| Tool | Invocations |
+|---|---|
+| `repositories` | once without `repo_slug` (list), once with (single) |
+| `pull-requests` | once without `pr_id` (list), once with (single) |
+| `pr-comments` | once without `comment_id` (list), once with (single) |
+| `commits` | once without `commit_hash` (list), once with (single) |
+| `pipelines` | once without `pipeline_uuid` (list), once with (single) |
+| `pipeline-steps` | once per `action` value: `list`, `get`, `log` |
+
+Each run must return `Tool Result: Success` and a response shape matching the tool's description. Record any failures in the implementation plan for fix-up before release.
 
 ## Documentation & Release
 
