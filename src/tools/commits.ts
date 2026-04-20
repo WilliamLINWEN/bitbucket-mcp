@@ -14,7 +14,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     {
       workspace: z.string().optional().describe("Bitbucket workspace name. Falls back to BITBUCKET_WORKSPACE env var if not provided."),
       repo_slug: z.string().describe("Repository slug/name"),
-      commit_hash: z.string().optional().describe("Commit hash. If provided, returns single commit details; otherwise lists recent commits."),
+      commit_hash: z.string().min(7).optional().describe("Commit hash. If provided, returns single commit details; otherwise lists recent commits."),
       branch: z.string().optional().describe("(list only) Branch name (defaults to main branch)"),
       page: z.string().optional().describe("(list only) Page number or opaque next page URL"),
       pagelen: z.number().int().min(10).max(100).optional().describe("(list only) Items per page (10-100, default 10)"),
