@@ -106,5 +106,16 @@ data
 
 # Claude Code
 .claude/
+CLAUDE.md
 # Superpowers planning/spec docs (local workflow, not shared)
 docs/superpowers/
+
+# openspec
+openspec/
+
+docs/plans
+docs/raw
+docs/reviews
+
+# github copilot
+.github
