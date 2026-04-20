@@ -35,7 +35,7 @@ async function listRepositories(
   opts: { role?: string; sort?: string; page?: string; pagelen?: number },
 ) {
   try {
-    const result = await api.listRepositories(workspace, opts as any);
+    const result = await api.listRepositories(workspace, opts);
     const repositories = result.repositories;
 
     if (repositories.length === 0) {
