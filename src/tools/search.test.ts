@@ -28,6 +28,31 @@ function makeRepo(name: string, fullName: string, extra: Partial<any> = {}) {
   };
 }
 
+function makeIssue(id: number, title: string) {
+  return {
+    id,
+    title,
+    state: "open",
+    priority: "major",
+    kind: "bug",
+    created_on: "2024-01-01T00:00:00Z",
+    updated_on: "2024-01-01T00:00:00Z",
+    reporter: { display_name: "Alice", username: "alice" },
+    links: { html: { href: `https://bitbucket.org/ws/repo/issues/${id}` } },
+  };
+}
+
+function makeCommit(hash: string, message: string) {
+  return {
+    hash,
+    message,
+    author: { raw: "Alice <alice@example.com>" },
+    date: "2024-01-01T00:00:00Z",
+    parents: [],
+    links: { html: { href: `https://bitbucket.org/ws/repo/commits/${hash}` } },
+  };
+}
+
 function makePR(id: number, title: string) {
   return {
     id,
@@ -316,6 +341,72 @@ describe("search tool", () => {
     await tool.handler(input);
 
     expect(api.listRepositories).toHaveBeenCalledWith("ws", { pagelen: 100 });
+  });
+
+  // Bug #3 (issues): per-repo getIssues error must be surfaced; successful matches from other repos still present
+  it("surfaces per-repo issues errors and still returns matches from other repos", async () => {
+    const failRepo = makeRepo("fail-repo", "ws/fail-repo");
+    const okRepo = makeRepo("ok-repo", "ws/ok-repo");
+
+    const api = {
+      listRepositories: vi.fn().mockResolvedValue({
+        repositories: [failRepo, okRepo],
+        hasMore: false,
+        next: undefined,
+        pagelen: 2,
+      }),
+      getIssues: vi.fn()
+        .mockRejectedValueOnce(new Error("403 Forbidden"))
+        .mockResolvedValueOnce({
+          issues: [makeIssue(5, "ok-repo: improve search")],
+          hasMore: false,
+        }),
+    };
+    const tool = setup(api);
+    const input = parse(tool.schema, {
+      workspace: "ws",
+      query: "improve search",
+      types: ["issues"],
+    });
+    const res = await tool.handler(input);
+    const text = res.content[0].text;
+
+    expect(text).toContain("Failed to search issues in fail-repo");
+    expect(text).toContain("403 Forbidden");
+    expect(text).toContain("ok-repo: improve search");
+  });
+
+  // Bug #3 (commits): per-repo getCommits error must be surfaced; successful matches from other repos still present
+  it("surfaces per-repo commits errors and still returns matches from other repos", async () => {
+    const failRepo = makeRepo("fail-repo", "ws/fail-repo");
+    const okRepo = makeRepo("ok-repo", "ws/ok-repo");
+
+    const api = {
+      listRepositories: vi.fn().mockResolvedValue({
+        repositories: [failRepo, okRepo],
+        hasMore: false,
+        next: undefined,
+        pagelen: 2,
+      }),
+      getCommits: vi.fn()
+        .mockRejectedValueOnce(new Error("500 Internal Server Error"))
+        .mockResolvedValueOnce({
+          commits: [makeCommit("abc12345def67890", "ok-repo: refactor handler")],
+          hasMore: false,
+        }),
+    };
+    const tool = setup(api);
+    const input = parse(tool.schema, {
+      workspace: "ws",
+      query: "refactor",
+      types: ["commits"],
+    });
+    const res = await tool.handler(input);
+    const text = res.content[0].text;
+
+    expect(text).toContain("Failed to search commits in fail-repo");
+    expect(text).toContain("500 Internal Server Error");
+    expect(text).toContain("ok-repo: refactor handler");
   });
 
   // Happy path: existing behavior still works

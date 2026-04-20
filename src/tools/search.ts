@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BitbucketAPI, Repository } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import { recordError, createApiErrorContext } from "../error-context.js";
 
 /**
  * Derive the URL-safe repo slug from a Repository object.
@@ -34,10 +35,25 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
       try {
         const workspace = resolveWorkspace(ws);
 
+        // Lazy-memoized repository list — fetched at most once per handler invocation
+        let cachedRepos: Awaited<ReturnType<typeof bitbucketAPI.listRepositories>> | null = null;
+        let cachedReposError: Error | null = null;
+        const getRepos = async () => {
+          if (cachedReposError) throw cachedReposError;
+          if (cachedRepos) return cachedRepos;
+          try {
+            cachedRepos = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            return cachedRepos;
+          } catch (error) {
+            cachedReposError = error instanceof Error ? error : new Error(String(error));
+            throw cachedReposError;
+          }
+        };
+
         // Search repositories
         if (types.includes("repositories")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repoResult = await getRepos();
             const repos = repoResult.repositories;
             const matchingRepos = repos.filter(repo =>
               repo.name.toLowerCase().includes(query.toLowerCase()) ||
@@ -70,7 +86,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
         // Search pull requests
         if (types.includes("pull-requests")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repoResult = await getRepos();
             const repos = repoResult.repositories;
             let prCount = 0;
             let prIterCount = 0;
@@ -105,6 +121,12 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
                 searchResults.push(`⚠️ Failed to search PRs in ${slug}: ${msg}`);
+                recordError(
+                  error instanceof Error ? error : new Error(msg),
+                  'getPullRequests',
+                  'search-tool',
+                  createApiErrorContext(`/repositories/${workspace}/${slug}/pullrequests`, 'GET', { metadata: { workspace, repository: slug } })
+                );
               }
             }
 
@@ -126,7 +148,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
         // Search issues
         if (types.includes("issues")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repoResult = await getRepos();
             const repos = repoResult.repositories;
             let issueCount = 0;
             let issueIterCount = 0;
@@ -161,6 +183,12 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
                 searchResults.push(`⚠️ Failed to search issues in ${slug}: ${msg}`);
+                recordError(
+                  error instanceof Error ? error : new Error(msg),
+                  'getIssues',
+                  'search-tool',
+                  createApiErrorContext(`/repositories/${workspace}/${slug}/issues`, 'GET', { metadata: { workspace, repository: slug } })
+                );
               }
             }
 
@@ -182,7 +210,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
         // Search commits
         if (types.includes("commits")) {
           try {
-            const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
+            const repoResult = await getRepos();
             const repos = repoResult.repositories;
             let commitCount = 0;
             let commitIterCount = 0;
@@ -216,6 +244,12 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
                 searchResults.push(`⚠️ Failed to search commits in ${slug}: ${msg}`);
+                recordError(
+                  error instanceof Error ? error : new Error(msg),
+                  'getCommits',
+                  'search-tool',
+                  createApiErrorContext(`/repositories/${workspace}/${slug}/commits`, 'GET', { metadata: { workspace, repository: slug } })
+                );
               }
             }
 
@@ -235,14 +269,14 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
         }
 
         if (totalResults === 0) {
-          // Even when no results found, surface any warnings collected
-          const warnings = searchResults.filter(r => r.startsWith("⚠️") || r.includes(" - Error:") || r.includes("more available") || r.startsWith("_(Searched"));
-          const warningText = warnings.length > 0 ? `\n\n${warnings.join("\n")}` : "";
+          // Even when no results found, surface any warnings, coverage notes, and errors collected
+          const additionalInfo = searchResults.filter(r => r.startsWith("⚠️") || r.includes(" - Error:") || r.includes("more available") || r.startsWith("_(Searched"));
+          const additionalInfoText = additionalInfo.length > 0 ? `\n\n${additionalInfo.join("\n")}` : "";
           return {
             content: [
               {
                 type: "text",
-                text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.${warningText}`,
+                text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.${additionalInfoText}`,
               },
             ],
           };
