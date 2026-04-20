@@ -106,3 +106,5 @@ data
 
 # Claude Code
 .claude/
+# Superpowers planning/spec docs (local workflow, not shared)
+docs/superpowers/

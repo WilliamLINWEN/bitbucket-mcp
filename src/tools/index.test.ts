@@ -27,11 +27,11 @@ function buildInput(schema: Record<string, z.ZodTypeAny>, input: Record<string, 
 const originalWorkspaceEnv = process.env.BITBUCKET_WORKSPACE;
 
 describe('registerTools', () => {
-  it('keeps list-pull-requests compatible with a single state value', async () => {
+  it('keeps pull-requests compatible with a single state value', async () => {
     const server = new FakeServer();
     registerTools(server as any, {} as any);
 
-    const tool = server.tools.get('list-pull-requests');
+    const tool = server.tools.get('pull-requests');
     expect(tool).toBeDefined();
 
     expect(() =>
@@ -43,7 +43,7 @@ describe('registerTools', () => {
     ).not.toThrow();
   });
 
-  it('returns all commits on the page when pagelen is specified for get-commits', async () => {
+  it('returns all commits on the page when pagelen is specified for commits', async () => {
     const server = new FakeServer();
     const bitbucketAPI = {
       getCommits: vi.fn().mockResolvedValue({
@@ -62,7 +62,7 @@ describe('registerTools', () => {
     };
 
     registerTools(server as any, bitbucketAPI as any);
-    const tool = server.tools.get('get-commits');
+    const tool = server.tools.get('commits');
     expect(tool).toBeDefined();
 
     const input = buildInput(tool!.schema, {
@@ -105,8 +105,8 @@ describe('registerTools', () => {
         input: { repo_slug: 'repo' },
       },
       {
-        toolName: 'get-pull-request',
-        input: { repo_slug: 'repo', pull_request_id: 123 },
+        toolName: 'pull-requests',
+        input: { repo_slug: 'repo', pr_id: 123 },
       },
       {
         toolName: 'create-pull-request',
@@ -201,7 +201,7 @@ describe('registerTools', () => {
         ]
       }));
       expect(result.content[0].text).toContain('Pipeline #123');
-      
+
       delete process.env.BITBUCKET_API_TOKEN;
     });
 
@@ -228,11 +228,11 @@ describe('registerTools', () => {
       expect(result.content[0].text).toContain('❌ Invalid parameters');
       expect(result.content[0].text).toContain('must provide both \'selector_type\' and \'selector_pattern\'');
       expect(bitbucketAPI.triggerPipeline).not.toHaveBeenCalled();
-      
+
       delete process.env.BITBUCKET_API_TOKEN;
     });
 
-    it('handles missing links or other properties in list-pipelines gracefully', async () => {
+    it('handles missing links or other properties in pipelines gracefully', async () => {
       const server = new FakeServer();
       const bitbucketAPI = {
         listPipelines: vi.fn().mockResolvedValue({
@@ -252,7 +252,7 @@ describe('registerTools', () => {
       process.env.BITBUCKET_API_TOKEN = 'test-token';
 
       registerTools(server as any, bitbucketAPI as any);
-      const tool = server.tools.get('list-pipelines');
+      const tool = server.tools.get('pipelines');
       expect(tool).toBeDefined();
 
       const input = buildInput(tool!.schema, {
@@ -264,7 +264,7 @@ describe('registerTools', () => {
       expect(result.content[0].text).toContain('Pipeline #1');
       expect(result.content[0].text).toContain('Status: unknown');
       expect(result.content[0].text).toContain('URL: N/A');
-      
+
       delete process.env.BITBUCKET_API_TOKEN;
     });
 
@@ -281,9 +281,9 @@ describe('registerTools', () => {
           links: { html: { href: 'https://example.com/pipeline' } }
         }),
       };
-      
+
       registerTools(server as any, bitbucketAPI as any);
-      const tool = server.tools.get('get-pipeline');
+      const tool = server.tools.get('pipelines');
       expect(tool).toBeDefined();
 
       const input = buildInput(tool!.schema, {
@@ -300,14 +300,14 @@ describe('registerTools', () => {
       expect(result.content[0].text).toContain('**URL:** https://example.com/pipeline');
     });
 
-    it('handles get-pipeline errors gracefully', async () => {
+    it('handles pipelines errors gracefully', async () => {
       const server = new FakeServer();
       const bitbucketAPI = {
         getPipeline: vi.fn().mockRejectedValue(new Error("Pipeline '{my-uuid}' not found in 'ws/repo'.")),
       };
-      
+
       registerTools(server as any, bitbucketAPI as any);
-      const tool = server.tools.get('get-pipeline');
+      const tool = server.tools.get('pipelines');
       expect(tool).toBeDefined();
 
       const input = buildInput(tool!.schema, {
