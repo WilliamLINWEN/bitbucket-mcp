@@ -1444,3 +1444,22 @@ Remaining matrix for repo owner to run via `/test-mcp-tool`:
 - commits list + single, pipelines list + single
 - pipeline-steps action=list, action=get, action=log
 - pipeline-steps missing-step_uuid error path (manual via inspector UI)
+
+## Follow-up (deferred from PR #46 review)
+
+CodeRabbit flagged several pre-existing issues that are out of scope for this consolidation PR. Open separate issues / PRs to address:
+
+**Major (behavior correctness):**
+- `src/tools/search.ts:33` — `search` uses default pagination on `listRepositories` then caps downstream PR/issue/commit searches to the first 3/2 repos. Misses results on large workspaces but still presents as "workspace-wide."
+- `src/tools/search.ts:60` — `search` passes `repo.name` to follow-up API calls; should use `repo.slug` (404 when they differ).
+- `src/tools/search.ts:194` — empty `catch` blocks swallow auth/rate-limit failures and return "No results found" instead of surfacing the error.
+- `src/tools/pipelines.ts:277` — `trigger-pipeline` handler lacks `withRequestTracking`; its latency/failures don't appear in `get-metrics` like other pipeline tools.
+- `src/tools/system.ts:23` — `health-check` and `get-metrics` themselves bypass `withRequestTracking`; their own usage is not recorded.
+
+**Minor:**
+- `src/tools/system.ts:130` — `get-metrics` success-rate formatting returns `NaN%` on a fresh process with no requests.
+- `src/tools/pr-comments.ts:19` — `pr-comments` still uses `pull_request_id` where the merged `pull-requests` uses `pr_id`; consider unifying the PR-selector parameter name across related tools.
+- `docs/superpowers/plans/2026-04-20-mcp-tool-consolidation.md` and other plan/spec markdown — fenced code blocks missing language tags (markdownlint).
+
+Addressed inline in this PR:
+- `src/tools/system.ts` "Available Tools" list in `health-check` output — updated to v2.0 tool names.
