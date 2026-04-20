@@ -73,9 +73,11 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
             const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
             const repos = repoResult.repositories;
             let prCount = 0;
+            let prIterCount = 0;
 
             for (const repo of repos) {
               if (prCount >= limit) break;
+              prIterCount++;
               const slug = getRepoSlug(repo);
               try {
                 const prResult = await bitbucketAPI.getPullRequests(workspace, slug, undefined, undefined, undefined);
@@ -102,14 +104,19 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 }
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search PRs in ${repo.name}: ${msg}`);
+                searchResults.push(`⚠️ Failed to search PRs in ${slug}: ${msg}`);
               }
             }
 
             // Coverage note
-            const coverageNote = repoResult.next
-              ? `_(Searched ${repos.length} repositories for PRs — more available, refine query for complete results)_`
-              : `_(Searched ${repos.length} repositories for PRs)_`;
+            let coverageNote: string;
+            if (prIterCount < repos.length) {
+              coverageNote = `_(Searched ${prIterCount} of ${repos.length} retrieved repositories for PRs — hit limit of ${limit}, more matches may exist)_`;
+            } else if (repoResult.next) {
+              coverageNote = `_(Searched all ${repos.length} retrieved repositories for PRs — more available, refine query for complete results)_`;
+            } else {
+              coverageNote = `_(Searched all ${repos.length} repositories for PRs)_`;
+            }
             searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 🔀 Pull Requests - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -122,9 +129,11 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
             const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
             const repos = repoResult.repositories;
             let issueCount = 0;
+            let issueIterCount = 0;
 
             for (const repo of repos) {
               if (issueCount >= limit) break;
+              issueIterCount++;
               const slug = getRepoSlug(repo);
               try {
                 const issueResult = await bitbucketAPI.getIssues(workspace, slug, undefined, undefined, undefined);
@@ -151,14 +160,19 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 }
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search issues in ${repo.name}: ${msg}`);
+                searchResults.push(`⚠️ Failed to search issues in ${slug}: ${msg}`);
               }
             }
 
             // Coverage note
-            const coverageNote = repoResult.next
-              ? `_(Searched ${repos.length} repositories for issues — more available, refine query for complete results)_`
-              : `_(Searched ${repos.length} repositories for issues)_`;
+            let coverageNote: string;
+            if (issueIterCount < repos.length) {
+              coverageNote = `_(Searched ${issueIterCount} of ${repos.length} retrieved repositories for issues — hit limit of ${limit}, more matches may exist)_`;
+            } else if (repoResult.next) {
+              coverageNote = `_(Searched all ${repos.length} retrieved repositories for issues — more available, refine query for complete results)_`;
+            } else {
+              coverageNote = `_(Searched all ${repos.length} repositories for issues)_`;
+            }
             searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 🐛 Issues - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -171,9 +185,11 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
             const repoResult = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
             const repos = repoResult.repositories;
             let commitCount = 0;
+            let commitIterCount = 0;
 
             for (const repo of repos) {
               if (commitCount >= limit) break;
+              commitIterCount++;
               const slug = getRepoSlug(repo);
               try {
                 const commitResult = await bitbucketAPI.getCommits(workspace, slug, undefined, undefined, undefined);
@@ -199,14 +215,19 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 }
               } catch (error) {
                 const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search commits in ${repo.name}: ${msg}`);
+                searchResults.push(`⚠️ Failed to search commits in ${slug}: ${msg}`);
               }
             }
 
             // Coverage note
-            const coverageNote = repoResult.next
-              ? `_(Searched ${repos.length} repositories for commits — more available, refine query for complete results)_`
-              : `_(Searched ${repos.length} repositories for commits)_`;
+            let coverageNote: string;
+            if (commitIterCount < repos.length) {
+              coverageNote = `_(Searched ${commitIterCount} of ${repos.length} retrieved repositories for commits — hit limit of ${limit}, more matches may exist)_`;
+            } else if (repoResult.next) {
+              coverageNote = `_(Searched all ${repos.length} retrieved repositories for commits — more available, refine query for complete results)_`;
+            } else {
+              coverageNote = `_(Searched all ${repos.length} repositories for commits)_`;
+            }
             searchResults.push(coverageNote);
           } catch (error) {
             searchResults.push(`## 💾 Commits - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -215,7 +236,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
 
         if (totalResults === 0) {
           // Even when no results found, surface any warnings collected
-          const warnings = searchResults.filter(r => r.startsWith("⚠️") || r.includes("more available") || r.startsWith("_(Searched"));
+          const warnings = searchResults.filter(r => r.startsWith("⚠️") || r.includes(" - Error:") || r.includes("more available") || r.startsWith("_(Searched"));
           const warningText = warnings.length > 0 ? `\n\n${warnings.join("\n")}` : "";
           return {
             content: [

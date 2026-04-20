@@ -233,10 +233,68 @@ describe("search tool", () => {
     const res = await tool.handler(input);
     const text = res.content[0].text;
 
-    // Should mention count of repos searched
-    expect(text).toContain("Searched 10");
+    // Should mention count of repos searched (new phrasing: "Searched all 10 retrieved repositories")
+    expect(text).toContain("Searched all 10");
     // Should indicate there are more repos available
     expect(text).toContain("more available");
+  });
+
+  // Important #1: Short-circuit — coverage note must reflect actual iteration count
+  it("coverage note reports N of M when limit is hit before all repos are iterated", async () => {
+    const repos = Array.from({ length: 5 }, (_, i) =>
+      makeRepo(`repo-${i}`, `ws/repo-${i}`)
+    );
+
+    const api = {
+      listRepositories: vi.fn().mockResolvedValue({
+        repositories: repos,
+        hasMore: false,
+        next: undefined,
+        pagelen: 5,
+      }),
+      // Each repo returns 3 matching PRs; limit is default 10 so after 4 repos (12 total) we break
+      // With limit=3, first repo already fills it → iterCount=1, repos.length=5
+      getPullRequests: vi.fn().mockResolvedValue({
+        pullRequests: [
+          makePR(1, "feat: alpha"),
+          makePR(2, "feat: beta"),
+          makePR(3, "feat: gamma"),
+        ],
+        hasMore: false,
+      }),
+    };
+    const tool = setup(api);
+    const input = parse(tool.schema, {
+      workspace: "ws",
+      query: "feat",
+      types: ["pull-requests"],
+      limit: 3,
+    });
+    const res = await tool.handler(input);
+    const text = res.content[0].text;
+
+    // After the first repo fills the limit (3 of 3), loop breaks — iterated 1 of 5
+    expect(text).toContain("1 of 5");
+    expect(text).toContain("hit limit of 3");
+  });
+
+  // Important #2: outer listRepositories failure must appear in zero-results output
+  it("surfaces outer listRepositories error in zero-results response", async () => {
+    const api = {
+      listRepositories: vi.fn().mockRejectedValue(new Error("401 Unauthorized — bad credentials")),
+    };
+    const tool = setup(api);
+    const input = parse(tool.schema, {
+      workspace: "ws",
+      query: "anything",
+      types: ["pull-requests"],
+    });
+    const res = await tool.handler(input);
+    const text = res.content[0].text;
+
+    // The outer-catch error must be preserved and surfaced
+    expect(text).toContain("Pull Requests - Error:");
+    expect(text).toContain("401 Unauthorized — bad credentials");
   });
 
   // Bug #1: pagelen=100 must be passed to listRepositories
