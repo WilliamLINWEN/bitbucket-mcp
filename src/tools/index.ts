@@ -5,6 +5,7 @@ import { withRequestTracking } from "../utils/request-tracking.js";
 import logger from "../debug-logger.js";
 import { metricsCollector } from "../metrics.js";
 import { resolveWorkspace } from "../validation.js";
+import { register as registerRepositories } from "./repositories.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -19,6 +20,8 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
     inputSchema: Record<string, z.ZodTypeAny>,
     cb: (...args: any[]) => unknown | Promise<unknown>
   ) => server.registerTool(name, { description, inputSchema }, cb as any);
+
+  registerRepositories(server, bitbucketAPI);
 
   // Tool: List repositories for a workspace
   registerTool(
