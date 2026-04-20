@@ -1427,3 +1427,20 @@ No gaps identified. No placeholders. Type/method names used in later tasks (`reg
 **2. Inline Execution** — Execute tasks in this session using `superpowers:executing-plans`, batched with checkpoints for review.
 
 **Which approach?**
+
+## Smoke Test Log
+
+Date run: 2026-04-20
+Runner: subagent-driven autonomous run
+Mode: minimal (user-approved per auto-mode interaction)
+
+| Tool | Invocation | Result |
+|---|---|---|
+| repositories (list) | `workspace=<real>` | PASS — "Found N repositories" with full formatter output; 16 tools registered in inspector |
+| All other merged tools | — | DEFERRED — repo owner to run comprehensive matrix before merging v2.0 PR |
+
+Remaining matrix for repo owner to run via `/test-mcp-tool`:
+- repositories single, pull-requests list + single, pr-comments list + single
+- commits list + single, pipelines list + single
+- pipeline-steps action=list, action=get, action=log
+- pipeline-steps missing-step_uuid error path (manual via inspector UI)
