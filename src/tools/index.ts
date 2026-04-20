@@ -13,6 +13,7 @@ import { register as registerBranches } from "./branches.js";
 import { register as registerIssues } from "./issues.js";
 import { register as registerSearch } from "./search.js";
 import { register as registerSystem } from "./system.js";
+import { register as registerPipelines } from "./pipelines.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -36,6 +37,7 @@ export function registerTools(server: McpServer, bitbucketAPI: BitbucketAPI) {
   registerIssues(server, bitbucketAPI);
   registerSearch(server, bitbucketAPI);
   registerSystem(server, bitbucketAPI);
+  registerPipelines(server, bitbucketAPI);
 
   // Tool: List repositories for a workspace
   registerTool(
