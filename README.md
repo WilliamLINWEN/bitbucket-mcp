@@ -182,17 +182,17 @@ Add this server to your MCP client configuration (e.g., `claude_desktop_config.j
 ## Usage Examples
 
 ### List Repositories
-```
+```text
 List all repositories in the 'myworkspace' workspace
 ```
 
 ### Create Pull Request
-```
+```text
 Create a pull request from feature/my-feature to main in myworkspace/myrepo with title "My Feature PR"
 ```
 
 ### Search Workspace
-```
+```text
 Search for "authentication" across all repositories and pull requests
 ```
 
