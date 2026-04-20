@@ -1,7 +1,15 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 
 import { registerTools } from './index.js';
+
+// Hoisted mock for metrics module — used by the get-metrics NaN guard test
+vi.mock('../metrics.js', () => ({
+  metricsCollector: {
+    getMetrics: vi.fn(),
+    getPerformanceInsights: vi.fn(),
+  },
+}));
 
 type RegisteredTool = {
   schema: Record<string, z.ZodTypeAny>;
@@ -320,5 +328,40 @@ describe('registerTools', () => {
       expect(bitbucketAPI.getPipeline).toHaveBeenCalledWith('ws', 'repo', '{my-uuid}');
       expect(result.content[0].text).toContain("❌ Failed to retrieve pipeline: Pipeline '{my-uuid}' not found in 'ws/repo'.");
     });
+  });
+});
+
+describe('get-metrics NaN guard', () => {
+  beforeEach(async () => {
+    const { metricsCollector } = await import('../metrics.js');
+    vi.mocked(metricsCollector.getMetrics).mockReturnValue({
+      totalRequests: 0,
+      successfulRequests: 0,
+      failedRequests: 0,
+      averageResponseTime: 0,
+      requestsByTool: {},
+      errorsByType: {},
+      responseTimesByEndpoint: {},
+    });
+    vi.mocked(metricsCollector.getPerformanceInsights).mockReturnValue({
+      slowestEndpoints: [],
+      mostUsedTools: [],
+      commonErrors: [],
+      successRate: 0,
+      recommendedOptimizations: [],
+    });
+  });
+
+  it('does not render NaN% in success rate when no requests have been recorded', async () => {
+    const server = new FakeServer();
+    registerTools(server as any, {} as any);
+
+    const tool = server.tools.get('get-metrics');
+    expect(tool).toBeDefined();
+
+    const result = await tool!.handler({});
+    const text: string = result.content[0].text;
+    expect(text).not.toContain('NaN%');
+    expect(text).toContain('N/A (0 requests)');
   });
 });

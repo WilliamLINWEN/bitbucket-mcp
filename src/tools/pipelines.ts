@@ -189,7 +189,7 @@ function registerTriggerPipeline(registerTool: ReturnType<typeof makeRegister>, 
       selector_pattern: z.string().optional().describe("Pattern for the selector (e.g., custom pipeline name)"),
       variables: z.record(z.string(), z.string()).optional().describe("Environment variables for the pipeline (key-value pairs)"),
     },
-    async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
+    withRequestTracking("trigger-pipeline", async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
       const workspace = resolveWorkspace(ws);
       try {
         // Check if authentication is available for triggering pipelines
@@ -273,7 +273,7 @@ function registerTriggerPipeline(registerTool: ReturnType<typeof makeRegister>, 
           ],
         };
       }
-    }
+    })
   );
 }
 
