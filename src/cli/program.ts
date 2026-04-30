@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { buildRepoCommand } from "./commands/repo.js";
+import { buildPrCommand } from "./commands/pr.js";
 
 export interface BbGlobals {
   readonly json: boolean;
@@ -25,6 +26,7 @@ export function buildProgram(): Command {
   };
 
   program.addCommand(buildRepoCommand(globals));
+  program.addCommand(buildPrCommand(globals));
 
   return program;
 }
