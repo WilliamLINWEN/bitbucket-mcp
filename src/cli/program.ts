@@ -1,4 +1,10 @@
 import { Command } from "commander";
+import { buildRepoCommand } from "./commands/repo.js";
+
+export interface BbGlobals {
+  readonly json: boolean;
+  readonly workspace: string | undefined;
+}
 
 export function buildProgram(): Command {
   const program = new Command();
@@ -10,7 +16,15 @@ export function buildProgram(): Command {
     .option("--workspace <slug>", "Bitbucket workspace; falls back to BITBUCKET_WORKSPACE")
     .showHelpAfterError();
 
-  // Subcommands are attached in subsequent tasks via program.addCommand(...).
+  // Getter object: each subcommand reads `globals.json` at action time, after parse.
+  // Don't pre-resolve `program.opts()` here — the values are not populated until
+  // parseAsync runs.
+  const globals: BbGlobals = {
+    get json() { return !!program.opts().json; },
+    get workspace() { return program.opts().workspace as string | undefined; },
+  };
+
+  program.addCommand(buildRepoCommand(globals));
 
   return program;
 }
