@@ -26,7 +26,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
       try {
         if (repo_slug) {
           const repo = await repositoriesCore.getRepository(bitbucketAPI, { workspace, repo_slug });
-          return { content: [{ type: "text", text: formatRepositoryDetail(workspace, repo_slug, repo) }] };
+          return { content: [{ type: "text", text: formatRepositoryDetail(workspace, repo) }] };
         }
         const result = await repositoriesCore.listRepositories(bitbucketAPI, {
           workspace, role, sort, page, pagelen,
@@ -77,7 +77,7 @@ function formatRepositoryList(workspace: string, result: ListRepositoriesResult)
   return `Found ${result.items.length} repositories in workspace '${workspace}':\n\n${repoText.join("\n")}${paginationText ? `\n${paginationText}` : ""}`;
 }
 
-function formatRepositoryDetail(workspace: string, repo_slug: string, repo: GetRepositoryResult): string {
+function formatRepositoryDetail(workspace: string, repo: GetRepositoryResult): string {
   const cloneUrls = repo.links.clone?.map((link: any) => `${link.name}: ${link.href}`).join("\n  ") || "No clone URLs available";
   const repoInfo = [
     `# ${repo.name}`,
