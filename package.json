@@ -5,7 +5,8 @@
   "type": "module",
   "main": "./build/index.js",
   "bin": {
-    "bitbucket-mcp": "./build/index.js"
+    "bitbucket-mcp": "./build/index.js",
+    "bb": "./build/cli/index.js"
   },
   "scripts": {
     "build": "tsc && chmod +x build/index.js",
@@ -45,6 +46,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "@types/node": "^25.6.0",
+    "commander": "^12.1.0",
     "node-fetch": "^3.3.2",
     "zod": "^4.3.6"
   }
