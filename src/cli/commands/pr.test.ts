@@ -41,4 +41,45 @@ describe("cli pr command", () => {
       cmd.parseAsync(["create", "-r", "r1"], { from: "user" }),
     ).rejects.toMatchObject({ exitCode: expect.any(Number) });
   });
+
+  it("`pr comment list 7 -r r1` calls core with the right args", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "listPrComments").mockResolvedValue({ items: [], hasMore: false });
+    const cmd = buildPrCommand({ json: true });
+    await cmd.parseAsync(["comment", "list", "7", "-r", "r1"], { from: "user" });
+    expect(prCommentsCore.listPrComments).toHaveBeenCalledWith(expect.anything(), {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 7,
+      page: undefined, pagelen: undefined,
+    });
+  });
+
+  it("`pr comment create 7 -r r1 -m hi` posts a non-inline comment", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
+      id: 99, links: { html: { href: "u" } },
+    } as any);
+    const cmd = buildPrCommand({ json: true });
+    await cmd.parseAsync(["comment", "create", "7", "-r", "r1", "-m", "hi"], { from: "user" });
+    expect(prCommentsCore.createPrComment).toHaveBeenCalledWith(expect.anything(), {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 7,
+      content: "hi", parent_id: undefined, inline: undefined,
+    });
+  });
+
+  it("`pr comment create 7 -r r1 -m hi --file src/foo.ts --to 10` builds inline options", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
+      id: 100, links: { html: { href: "u" } },
+    } as any);
+    const cmd = buildPrCommand({ json: true });
+    await cmd.parseAsync(
+      ["comment", "create", "7", "-r", "r1", "-m", "hi", "--file", "src/foo.ts", "--to", "10"],
+      { from: "user" },
+    );
+    expect(prCommentsCore.createPrComment).toHaveBeenCalledWith(expect.anything(), {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 7,
+      content: "hi", parent_id: undefined,
+      inline: { path: "src/foo.ts", from: undefined, to: 10 },
+    });
+  });
 });

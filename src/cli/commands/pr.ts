@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import * as prCore from "../../core/pull-requests.js";
+import * as prCommentsCore from "../../core/pr-comments.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
@@ -94,19 +95,65 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
       emit(ctx(), result, () => result.diff);
     });
 
+  const comment = cmd.command("comment").description("Pull request comment operations");
+
+  comment.command("list <id>")
+    .description("List comments on a pull request")
+    .requiredOption("-r, --repo <slug>", "Repository slug")
+    .option("--page <page>", "Page number or opaque next URL")
+    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .action(async (id: string, opts) => {
+      const result = await prCommentsCore.listPrComments(createApiClient(), {
+        workspace: ws(), repo_slug: opts.repo,
+        pull_request_id: parseIntStrict(id, "pr id"),
+        page: opts.page, pagelen: opts.pagelen,
+      });
+      emit(ctx(), result, () =>
+        result.items.map((c) =>
+          `#${c.id}\t@${c.user.username}\t${c.content.raw.split("\n")[0].slice(0, 80)}`,
+        ).join("\n") || "(no comments)",
+      );
+    });
+
+  comment.command("create <id>")
+    .description("Create a comment on a pull request (optionally inline or as a reply)")
+    .requiredOption("-r, --repo <slug>", "Repository slug")
+    .requiredOption("-m, --message <text>", "Comment text")
+    .option("--parent <commentId>", "Reply to comment id", parseIntOpt)
+    .option("--file <path>", "Inline comment: file path")
+    .option("--from <line>", "Inline comment: old-version line number", parseIntOpt)
+    .option("--to <line>", "Inline comment: new-version line number", parseIntOpt)
+    .action(async (id: string, opts) => {
+      const inline = opts.file
+        ? { path: opts.file as string, from: opts.from, to: opts.to }
+        : undefined;
+      const c = await prCommentsCore.createPrComment(createApiClient(), {
+        workspace: ws(), repo_slug: opts.repo,
+        pull_request_id: parseIntStrict(id, "pr id"),
+        content: opts.message,
+        parent_id: opts.parent,
+        inline,
+      });
+      emit(ctx(), c, () => `created comment #${c.id}: ${c.links.html.href}`);
+    });
+
   // Propagate exitOverride to subcommands so tests can use cmd.exitOverride()
   // and have it apply to all nested commands (commander only copies _exitCallback
   // at subcommand creation time, not when exitOverride is called later).
   const originalExitOverride = cmd.exitOverride.bind(cmd);
   cmd.exitOverride = function (fn?: (err: any) => never) {
     originalExitOverride(fn as any);
-    for (const sub of cmd.commands) {
-      if (fn) {
-        sub.exitOverride(fn);
-      } else {
-        sub.exitOverride();
+    const applyToAll = (parent: Command) => {
+      for (const sub of parent.commands) {
+        if (fn) {
+          sub.exitOverride(fn);
+        } else {
+          sub.exitOverride();
+        }
+        applyToAll(sub);
       }
-    }
+    };
+    applyToAll(cmd);
     return cmd;
   };
 

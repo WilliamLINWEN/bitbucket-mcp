@@ -4,6 +4,7 @@ import type {
   Issue,
   Branch,
   Commit,
+  Comment,
 } from "../bitbucket-api.js";
 
 export interface PaginatedResult<T> {
@@ -80,3 +81,30 @@ export interface GetPullRequestDiffInput {
   pull_request_id: number;
 }
 export type GetPullRequestDiffResult = { diff: string };
+
+export interface ListPrCommentsInput {
+  workspace: string;
+  repo_slug: string;
+  pull_request_id: number;
+  page?: string;
+  pagelen?: number;
+}
+export type ListPrCommentsResult = PaginatedResult<Comment>;
+
+export interface GetPrCommentInput {
+  workspace: string;
+  repo_slug: string;
+  pull_request_id: number;
+  comment_id: number;
+}
+export type GetPrCommentResult = Comment;
+
+export interface CreatePrCommentInput {
+  workspace: string;
+  repo_slug: string;
+  pull_request_id: number;
+  content: string;
+  parent_id?: number;
+  inline?: { path: string; from?: number; to?: number };
+}
+export type CreatePrCommentResult = Comment;
