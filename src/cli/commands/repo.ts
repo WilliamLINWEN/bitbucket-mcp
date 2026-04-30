@@ -1,9 +1,9 @@
 import { Command } from "commander";
-import { BitbucketAPI } from "../../bitbucket-api.js";
 import * as repositoriesCore from "../../core/repositories.js";
 import { resolveWorkspace } from "../../validation.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { createApiClient } from "../api-client.js";
 import type {
   ListRepositoriesResult,
   GetRepositoryResult,
@@ -26,11 +26,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
     .action(async (opts) => {
       const workspace = resolveWorkspace(globalOpts.workspace);
-      const api = new BitbucketAPI(
-        process.env.BITBUCKET_USERNAME,
-        process.env.BITBUCKET_APP_PASSWORD,
-        process.env.BITBUCKET_API_TOKEN,
-      );
+      const api = createApiClient();
       const result = await repositoriesCore.listRepositories(api, {
         workspace,
         role: opts.role,
@@ -46,11 +42,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
     .description("Show details for a single repository")
     .action(async (slug: string) => {
       const workspace = resolveWorkspace(globalOpts.workspace);
-      const api = new BitbucketAPI(
-        process.env.BITBUCKET_USERNAME,
-        process.env.BITBUCKET_APP_PASSWORD,
-        process.env.BITBUCKET_API_TOKEN,
-      );
+      const api = createApiClient();
       const repo = await repositoriesCore.getRepository(api, {
         workspace,
         repo_slug: slug,
