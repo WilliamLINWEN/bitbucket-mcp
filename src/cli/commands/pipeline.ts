@@ -131,10 +131,10 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
   return cmd;
 }
 
+// TODO: replace with shared utils.ts versions
 function parseIntOpt(v: string): number {
-  const n = Number.parseInt(v, 10);
-  if (Number.isNaN(n)) throw new CliError(`expected integer, got: ${v}`);
-  return n;
+  if (!/^-?\d+$/.test(v)) throw new CliError(`expected integer, got: ${v}`);
+  return Number.parseInt(v, 10);
 }
 
 function parseVariables(values: string[] | undefined): Array<{ key: string; value: string }> | undefined {

@@ -1,3 +1,5 @@
+import { recordError } from "../error-context.js";
+
 export class CliError extends Error {
   constructor(message: string, public readonly exitCode: number = 1) {
     super(message);
@@ -20,6 +22,9 @@ export function classifyError(error: unknown): ClassifiedError {
 
 export function reportAndExit(error: unknown): never {
   const c = classifyError(error);
+  if (error instanceof Error) {
+    recordError(error, "bb-cli", "bb-cli");
+  }
   process.stderr.write(`error: ${c.message}\n`);
   process.exit(c.exitCode);
 }

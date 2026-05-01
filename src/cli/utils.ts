@@ -26,16 +26,14 @@ export function propagateExitOverride(cmd: Command): void {
   };
 }
 
-/** Parse an integer command-line option, throwing CliError on NaN. */
+/** Parse an integer command-line option, throwing CliError on NaN or mixed content. */
 export function parseIntOpt(value: string): number {
-  const n = Number.parseInt(value, 10);
-  if (Number.isNaN(n)) throw new CliError(`expected integer, got: ${value}`);
-  return n;
+  if (!/^-?\d+$/.test(value)) throw new CliError(`expected integer, got: ${value}`);
+  return Number.parseInt(value, 10);
 }
 
-/** Parse a positional integer argument, throwing CliError on NaN. */
+/** Parse a positional integer argument, throwing CliError on NaN or mixed content. */
 export function parseIntStrict(value: string, label: string): number {
-  const n = Number.parseInt(value, 10);
-  if (Number.isNaN(n)) throw new CliError(`${label} must be an integer, got: ${value}`);
-  return n;
+  if (!/^-?\d+$/.test(value)) throw new CliError(`${label} must be an integer, got: ${value}`);
+  return Number.parseInt(value, 10);
 }

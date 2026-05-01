@@ -193,18 +193,6 @@ function registerTriggerPipeline(registerTool: ReturnType<typeof makeRegister>, 
     withRequestTracking("trigger-pipeline", async ({ workspace: ws, repo_slug, ref_type, ref_name, commit_hash, selector_type, selector_pattern, variables }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        // Check if authentication is available for triggering pipelines
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Triggering a pipeline requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
-              },
-            ],
-          };
-        }
-
         // Validation: Must have either (ref_type + ref_name) OR commit_hash
         if (!(ref_type && ref_name) && !commit_hash) {
           return {

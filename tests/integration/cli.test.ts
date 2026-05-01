@@ -35,6 +35,7 @@ function runCli(args: string[], env: Record<string, string | undefined>): RunRes
       env: finalEnv,
       encoding: "utf8",
       stdio: ["ignore", "pipe", "pipe"],
+      timeout: 30_000,
     });
     return { stdout, stderr: "", status: 0 };
   } catch (err: any) {

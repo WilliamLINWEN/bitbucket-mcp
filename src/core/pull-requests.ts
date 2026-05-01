@@ -47,6 +47,9 @@ export async function updatePullRequest(
   const patch: { title?: string; description?: string } = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.description !== undefined) patch.description = input.description;
+  if (Object.keys(patch).length === 0) {
+    throw new Error("updatePullRequest requires at least one of `title` or `description`");
+  }
   return api.updatePullRequest(input.workspace, input.repo_slug, input.pull_request_id, patch);
 }
 

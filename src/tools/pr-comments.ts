@@ -192,18 +192,6 @@ function registerCreatePrComment(registerTool: ReturnType<typeof makeRegister>, 
     async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line, parent_id }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        // Check if authentication is available for creating comments
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Creating comments requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
-              },
-            ],
-          };
-        }
-
         // Set up inline options if file_path is provided
         const inlineOptions = file_path ? {
           path: file_path,

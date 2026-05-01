@@ -146,10 +146,12 @@ describe('registerTools', () => {
   });
 
   describe('Pipelines', () => {
-    it('returns authentication error when triggering pipeline without credentials', async () => {
+    it('propagates API error when triggering pipeline fails (no longer short-circuits on missing env vars)', async () => {
       const server = new FakeServer();
       const bitbucketAPI = {
-        triggerPipeline: vi.fn(),
+        triggerPipeline: vi.fn().mockRejectedValue(
+          new Error("Failed to fetch data: 401 Unauthorized"),
+        ),
       };
 
       // Ensure no auth env vars are set
@@ -169,8 +171,9 @@ describe('registerTools', () => {
       });
 
       const result = await tool!.handler(input);
-      expect(result.content[0].text).toContain('❌ Authentication required');
-      expect(bitbucketAPI.triggerPipeline).not.toHaveBeenCalled();
+      // The env-var preflight was removed; auth errors surface from the API layer.
+      expect(result.content[0].text).toContain('❌ Failed to trigger pipeline');
+      expect(bitbucketAPI.triggerPipeline).toHaveBeenCalled();
     });
 
     it('triggers a pipeline with variables correctly', async () => {

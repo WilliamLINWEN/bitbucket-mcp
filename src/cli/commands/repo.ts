@@ -58,10 +58,10 @@ function toCtx(opts: RepoCommandOptions): OutputContext {
   return { json: opts.json };
 }
 
+// TODO: replace with shared utils.ts versions
 function parseIntOpt(value: string): number {
-  const n = Number.parseInt(value, 10);
-  if (Number.isNaN(n)) throw new CliError(`expected integer, got: ${value}`);
-  return n;
+  if (!/^-?\d+$/.test(value)) throw new CliError(`expected integer, got: ${value}`);
+  return Number.parseInt(value, 10);
 }
 
 function formatList(workspace: string, result: ListRepositoriesResult): string {

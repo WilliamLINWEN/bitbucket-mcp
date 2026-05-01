@@ -283,6 +283,18 @@ export class BitbucketAPI {
     }
   }
 
+  /**
+   * Return the auth method currently in use by this instance's AuthProvider,
+   * without mutating any state. Useful for diagnostics / auth-status checks.
+   */
+  public async getAuthMethod(): Promise<"token" | "basic" | "none"> {
+    const header = await this.authProvider.getAuthHeader();
+    if (!header) return "none";
+    if (header.startsWith("Bearer ")) return "token";
+    if (header.startsWith("Basic ")) return "basic";
+    return "none";
+  }
+
   private async makeRequest<T>(url: string, options: RequestInit = {}, requestOptions: RequestOptions = {}): Promise<T> {
     const { retries = 3, retryDelay = 1000, timeout = 30000 } = requestOptions;
 

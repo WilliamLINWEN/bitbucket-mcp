@@ -2,9 +2,14 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as repositoriesCore from "./repositories.js";
 import { authStatus } from "./system.js";
 
-describe("core authStatus", () => {
-  const fakeApi = {} as any;
+// Build a minimal fake API that satisfies the getAuthMethod() contract.
+function makeFakeApi(authMethod: "token" | "basic" | "none") {
+  return {
+    getAuthMethod: vi.fn().mockResolvedValue(authMethod),
+  } as any;
+}
 
+describe("core authStatus", () => {
   beforeEach(() => {
     // Clean auth env vars before each test
     delete process.env.BITBUCKET_API_TOKEN;
@@ -21,8 +26,8 @@ describe("core authStatus", () => {
     delete process.env.BITBUCKET_WORKSPACE;
   });
 
-  it("returns authMethod:token, reachable:true, authenticated:true when token env is set and repos call resolves", async () => {
-    process.env.BITBUCKET_API_TOKEN = "test-token";
+  it("returns authMethod:token, reachable:true, authenticated:true when getAuthMethod returns 'token' and repos call resolves", async () => {
+    const fakeApi = makeFakeApi("token");
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],
       hasMore: false,
@@ -38,7 +43,8 @@ describe("core authStatus", () => {
     });
   });
 
-  it("returns authMethod:none, reachable:true, authenticated:false when no env auth is set and repos call resolves", async () => {
+  it("returns authMethod:none, reachable:true, authenticated:false when getAuthMethod returns 'none' and repos call resolves", async () => {
+    const fakeApi = makeFakeApi("none");
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],
       hasMore: false,
@@ -54,9 +60,8 @@ describe("core authStatus", () => {
     });
   });
 
-  it("returns reachable:false and error populated when repos call rejects", async () => {
-    process.env.BITBUCKET_USERNAME = "user";
-    process.env.BITBUCKET_APP_PASSWORD = "pass";
+  it("returns reachable:false, authenticated:false when repos call rejects (even when getAuthMethod returns 'basic')", async () => {
+    const fakeApi = makeFakeApi("basic");
     vi.spyOn(repositoriesCore, "listRepositories").mockRejectedValue(
       new Error("Network failure"),
     );
@@ -65,13 +70,27 @@ describe("core authStatus", () => {
 
     expect(result.reachable).toBe(false);
     expect(result.authMethod).toBe("basic");
-    expect(result.authenticated).toBe(true);
+    expect(result.authenticated).toBe(false);
     expect(result.error).toBe("Network failure");
     expect(result.workspaceTested).toBe("broken");
   });
 
+  it("authenticated:false on probe failure even when getAuthMethod returns 'token'", async () => {
+    const fakeApi = makeFakeApi("token");
+    vi.spyOn(repositoriesCore, "listRepositories").mockRejectedValue(
+      new Error("Failed to fetch data: 401 Unauthorized"),
+    );
+
+    const result = await authStatus(fakeApi, { workspace: "acme" });
+
+    expect(result.authenticated).toBe(false);
+    expect(result.authMethod).toBe("token");
+    expect(result.reachable).toBe(false);
+  });
+
   it("defaults workspaceTested to BITBUCKET_WORKSPACE env var when no workspace input provided", async () => {
     process.env.BITBUCKET_WORKSPACE = "my-org";
+    const fakeApi = makeFakeApi("none");
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],
       hasMore: false,
@@ -82,9 +101,8 @@ describe("core authStatus", () => {
     expect(result.workspaceTested).toBe("my-org");
   });
 
-  it("returns authMethod:basic when username+apiToken are both set (matches actual Basic header sent)", async () => {
-    process.env.BITBUCKET_USERNAME = "alice";
-    process.env.BITBUCKET_API_TOKEN = "tok";
+  it("returns authMethod:basic when getAuthMethod returns 'basic' and probe succeeds", async () => {
+    const fakeApi = makeFakeApi("basic");
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],
       hasMore: false,
@@ -97,6 +115,7 @@ describe("core authStatus", () => {
   });
 
   it("defaults workspaceTested to 'atlassian' when neither workspace input nor env var provided", async () => {
+    const fakeApi = makeFakeApi("none");
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],
       hasMore: false,

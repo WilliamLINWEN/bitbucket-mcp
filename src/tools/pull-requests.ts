@@ -158,18 +158,6 @@ function registerCreatePullRequest(registerTool: ReturnType<typeof makeRegister>
     async ({ workspace: ws, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        // Auth guard — creating a PR always requires credentials
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Creating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
-              },
-            ],
-          };
-        }
-
         const pr = await pullRequestsCore.createPullRequest(api, {
           workspace, repo_slug,
           title,
@@ -252,18 +240,6 @@ function registerUpdatePrDescription(registerTool: ReturnType<typeof makeRegiste
               {
                 type: "text",
                 text: "❌ You must provide at least one of 'title' or 'description' to update.",
-              },
-            ],
-          };
-        }
-
-        // Check if authentication is available
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Updating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
               },
             ],
           };

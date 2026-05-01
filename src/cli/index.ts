@@ -3,8 +3,8 @@ import { buildProgram } from "./program.js";
 import { reportAndExit } from "./errors.js";
 
 async function main(): Promise<void> {
-  const program = buildProgram();
   try {
+    const program = buildProgram();
     await program.parseAsync(process.argv);
   } catch (error) {
     reportAndExit(error);

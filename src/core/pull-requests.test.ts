@@ -66,6 +66,16 @@ describe("core/pull-requests", () => {
     expect(api.updatePullRequest).toHaveBeenCalledWith("acme", "r1", 9, { title: "T" });
   });
 
+  it("updatePullRequest throws when neither title nor description is provided", async () => {
+    const api = fakeApi({
+      updatePullRequest: vi.fn(),
+    });
+    await expect(
+      updatePullRequest(api, { workspace: "acme", repo_slug: "r1", pull_request_id: 9 }),
+    ).rejects.toThrow("updatePullRequest requires at least one of `title` or `description`");
+    expect(api.updatePullRequest).not.toHaveBeenCalled();
+  });
+
   it("getPullRequestDiff returns the diff string in a typed envelope", async () => {
     const api = fakeApi({
       getPullRequestDiff: vi.fn().mockResolvedValue("diff --git ..."),
