@@ -4,8 +4,8 @@ import type { Branch } from "../../bitbucket-api.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
-import { CliError } from "../errors.js";
 import { action } from "../action.js";
+import { parsePagelenOpt } from "../utils.js";
 
 export interface BranchCommandOptions {
   json: boolean;
@@ -21,7 +21,7 @@ export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
     .description("List branches for a repository")
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
       const result = await branchesCore.listBranches(createApiClient(), {
         workspace: ws(),
@@ -57,8 +57,3 @@ export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
   return cmd;
 }
 
-// TODO: replace with shared utils.ts versions
-function parseIntOpt(v: string): number {
-  if (!/^-?\d+$/.test(v)) throw new CliError(`expected integer, got: ${v}`);
-  return Number.parseInt(v, 10);
-}

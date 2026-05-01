@@ -5,7 +5,7 @@ import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
-import { propagateExitOverride } from "../utils.js";
+import { propagateExitOverride, parsePagelenOpt } from "../utils.js";
 
 export interface PipelineCommandOptions {
   json: boolean;
@@ -21,7 +21,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .description("List pipelines for a repository")
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
       const result = await pipelinesCore.listPipelines(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
@@ -58,6 +58,9 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .option("--selector-pattern <pattern>", "Selector pattern")
     .option("--var <key=value...>", "Pipeline variable (repeatable)")
     .action(action(async (opts) => {
+      if (opts.branch && opts.tag) {
+        throw new CliError("Provide only one of --branch or --tag");
+      }
       let ref_type: "branch" | "tag" | undefined;
       let ref_name: string | undefined;
       if (opts.branch) {
@@ -88,7 +91,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .description("List steps for a pipeline")
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (pipelineUuid: string, opts) => {
       const result = await pipelinesCore.listPipelineSteps(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo, pipeline_uuid: pipelineUuid,
@@ -129,12 +132,6 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
 
   propagateExitOverride(cmd);
   return cmd;
-}
-
-// TODO: replace with shared utils.ts versions
-function parseIntOpt(v: string): number {
-  if (!/^-?\d+$/.test(v)) throw new CliError(`expected integer, got: ${v}`);
-  return Number.parseInt(v, 10);
 }
 
 function parseVariables(values: string[] | undefined): Array<{ key: string; value: string }> | undefined {

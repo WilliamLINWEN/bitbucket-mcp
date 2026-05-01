@@ -6,6 +6,7 @@ import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
+import { parseIntOpt } from "../utils.js";
 
 const VALID_TYPES: SearchType[] = ["repositories", "pull-requests", "issues", "commits"];
 const DEFAULT_TYPES: SearchType[] = ["repositories", "pull-requests", "issues"];
@@ -115,8 +116,3 @@ function parseTypes(val: string): SearchType[] {
   });
 }
 
-// TODO: replace with shared utils.ts versions
-function parseIntOpt(v: string): number {
-  if (!/^-?\d+$/.test(v)) throw new CliError(`expected integer, got: ${v}`);
-  return Number.parseInt(v, 10);
-}

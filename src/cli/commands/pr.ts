@@ -6,6 +6,7 @@ import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
+import { parseIntOpt, parseIntStrict, parsePagelenOpt } from "../utils.js";
 
 export interface PrCommandOptions {
   json: boolean;
@@ -22,8 +23,14 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--state <state>", "OPEN | MERGED | DECLINED | SUPERSEDED")
     .option("--page <page>", "Page number or opaque next URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
+      if (opts.state !== undefined) {
+        const validStates = ["OPEN", "MERGED", "DECLINED", "SUPERSEDED"];
+        if (!validStates.includes(opts.state)) {
+          throw new CliError(`--state must be one of ${validStates.join(", ")}; got: ${opts.state}`);
+        }
+      }
       const result = await prCore.listPullRequests(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         state: opts.state, page: opts.page, pagelen: opts.pagelen,
@@ -102,7 +109,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .description("List comments on a pull request")
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (id: string, opts) => {
       const result = await prCommentsCore.listPrComments(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
@@ -161,13 +168,3 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
   return cmd;
 }
 
-// TODO: replace with shared utils.ts versions
-function parseIntOpt(v: string): number {
-  if (!/^-?\d+$/.test(v)) throw new CliError(`expected integer, got: ${v}`);
-  return Number.parseInt(v, 10);
-}
-// TODO: replace with shared utils.ts versions
-function parseIntStrict(v: string, label: string): number {
-  if (!/^-?\d+$/.test(v)) throw new CliError(`${label} must be an integer, got: ${v}`);
-  return Number.parseInt(v, 10);
-}

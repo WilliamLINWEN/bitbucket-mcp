@@ -39,6 +39,7 @@ export async function search(
     if (cachedReposError) throw cachedReposError;
     if (cachedRepos) return cachedRepos;
     try {
+      // TODO(#56-followup): paginate beyond first page; currently misses matches on later pages.
       cachedRepos = await api.listRepositories(workspace, { pagelen: 100 });
       return cachedRepos;
     } catch (error) {
@@ -93,6 +94,7 @@ export async function search(
         prIterCount++;
         const slug = getRepoSlug(repo);
         try {
+          // TODO(#56-followup): paginate beyond first page; currently misses matches on later pages.
           const prResult = await api.getPullRequests(workspace, slug, undefined, undefined, undefined);
           const matchingPRs = prResult.pullRequests.filter((pr) =>
             pr.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -147,6 +149,7 @@ export async function search(
         issueIterCount++;
         const slug = getRepoSlug(repo);
         try {
+          // TODO(#56-followup): paginate beyond first page; currently misses matches on later pages.
           const issueResult = await api.getIssues(workspace, slug, undefined, undefined, undefined);
           const matchingIssues = issueResult.issues.filter((issue) =>
             issue.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -201,6 +204,7 @@ export async function search(
         commitIterCount++;
         const slug = getRepoSlug(repo);
         try {
+          // TODO(#56-followup): paginate beyond first page; currently misses matches on later pages.
           const commitResult = await api.getCommits(workspace, slug, undefined, undefined, undefined);
           const matchingCommits = commitResult.commits.filter((commit) =>
             commit.message.toLowerCase().includes(query.toLowerCase())

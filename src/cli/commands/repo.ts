@@ -2,9 +2,9 @@ import { Command } from "commander";
 import * as repositoriesCore from "../../core/repositories.js";
 import { resolveWorkspace } from "../../validation.js";
 import { emit, OutputContext } from "../format.js";
-import { CliError } from "../errors.js";
 import { createApiClient } from "../api-client.js";
 import { action } from "../action.js";
+import { parsePagelenOpt } from "../utils.js";
 import type {
   ListRepositoriesResult,
   GetRepositoryResult,
@@ -24,7 +24,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
     .option("--role <role>", "Filter by user role (owner|admin|contributor|member)")
     .option("--sort <field>", "Sort by created_on|updated_on|name|size")
     .option("--page <page>", "Page number or opaque next page URL")
-    .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
+    .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
       const workspace = resolveWorkspace(globalOpts.workspace);
       const api = createApiClient();
@@ -56,12 +56,6 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
 
 function toCtx(opts: RepoCommandOptions): OutputContext {
   return { json: opts.json };
-}
-
-// TODO: replace with shared utils.ts versions
-function parseIntOpt(value: string): number {
-  if (!/^-?\d+$/.test(value)) throw new CliError(`expected integer, got: ${value}`);
-  return Number.parseInt(value, 10);
 }
 
 function formatList(workspace: string, result: ListRepositoriesResult): string {

@@ -54,6 +54,25 @@ describe("cli pipeline command", () => {
     ).rejects.toThrow();
   });
 
+  it("`pipeline trigger -r r1 --branch main --tag v1` rejects conflicting refs", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
+      throw new Error(`__exit:${code ?? 0}`);
+    }) as any;
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const cmd = buildPipelineCommand({ json: true });
+      cmd.exitOverride();
+      await expect(
+        cmd.parseAsync(["trigger", "-r", "r1", "--branch", "main", "--tag", "v1"], { from: "user" }),
+      ).rejects.toThrow(/__exit/);
+      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(stderr).toMatch(/--branch.*--tag|only one/i);
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+
   it("`pipeline step list p1 -r r1` calls core", async () => {
     vi.spyOn(pipelinesCore, "listPipelineSteps").mockResolvedValue({ items: [], hasMore: false });
     const cmd = buildPipelineCommand({ json: true });

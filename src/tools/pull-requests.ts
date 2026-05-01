@@ -234,7 +234,7 @@ function registerUpdatePrDescription(registerTool: ReturnType<typeof makeRegiste
     async ({ workspace: ws, repo_slug, pull_request_id, title, description }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        if (!title && description === undefined) {
+        if (title === undefined && description === undefined) {
           return {
             content: [
               {
