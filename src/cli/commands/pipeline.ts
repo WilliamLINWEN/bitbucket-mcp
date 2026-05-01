@@ -9,12 +9,13 @@ import { propagateExitOverride, parsePagelenOpt } from "../utils.js";
 
 export interface PipelineCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
 export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Command {
   const cmd = new Command("pipeline").description("Pipeline operations");
-  const ctx = (): OutputContext => ({ json: globalOpts.json });
+  const ctx = (): OutputContext => ({ json: globalOpts.json, pretty: globalOpts.pretty });
   const ws = (): string => resolveWorkspace(globalOpts.workspace);
 
   cmd.command("list")

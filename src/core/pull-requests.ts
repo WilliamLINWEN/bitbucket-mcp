@@ -50,6 +50,9 @@ export async function updatePullRequest(
   if (Object.keys(patch).length === 0) {
     throw new Error("updatePullRequest requires at least one of `title` or `description`");
   }
+  if (patch.title === "") {
+    throw new Error("updatePullRequest: `title` cannot be empty; provide a non-empty title or omit the field");
+  }
   return api.updatePullRequest(input.workspace, input.repo_slug, input.pull_request_id, patch);
 }
 

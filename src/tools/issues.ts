@@ -27,29 +27,30 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
           workspace,
           repo_slug,
           state,
-          kind,
           page,
           pagelen,
         });
 
-        // The raw API result is needed for the empty-before-kind-filter check
-        // We check items length directly; the core already applied the kind filter
-        const filteredIssues = result.items;
+        const issues = result.items;
+        const filteredIssues = kind ? issues.filter((i) => i.kind === kind) : issues;
 
-        // If there were no issues at all from the API, the core returns empty items
-        // We need to distinguish "no issues at all" vs "no issues after kind filter"
-        // Since the core applies the kind filter, both cases result in empty items here.
-        // We use result.hasMore and result.next for pagination hints.
-        if (filteredIssues.length === 0) {
-          // Check if state filter was specified for the first empty message
-          // We must distinguish "no issues in repo at all" vs "no issues after kind filter"
-          // Since we can't distinguish after core filtering, emit the criteria message
-          const paginationHint = result.hasMore ? ` No matching issues on this page; use the next page URL to continue searching.` : '';
+        if (issues.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: `No issues found in '${workspace}/${repo_slug}' matching the specified criteria.${paginationHint}${result.next ? `\nNext page: ${result.next}` : ''}`,
+                text: `No issues found in '${workspace}/${repo_slug}'.${result.next ? `\nNext page: ${result.next}` : ''}`,
+              },
+            ],
+          };
+        }
+
+        if (filteredIssues.length === 0 && kind) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `No issues of kind '${kind}' found among the ${issues.length} issues on this page.${result.next ? `\nNext page: ${result.next}` : ''}`,
               },
             ],
           };

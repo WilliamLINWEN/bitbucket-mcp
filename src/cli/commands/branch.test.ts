@@ -16,7 +16,7 @@ describe("cli branch command", () => {
 
   it("`branch list -r r1` calls core with the right args", async () => {
     vi.spyOn(branchesCore, "listBranches").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildBranchCommand({ json: true });
+    const cmd = buildBranchCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     expect(branchesCore.listBranches).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -28,7 +28,7 @@ describe("cli branch command", () => {
 
   it("`branch list -r r1 --pagelen 20` passes pagelen correctly", async () => {
     vi.spyOn(branchesCore, "listBranches").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildBranchCommand({ json: true });
+    const cmd = buildBranchCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1", "--pagelen", "20"], { from: "user" });
     expect(branchesCore.listBranches).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -55,7 +55,7 @@ describe("cli branch command", () => {
       ],
       hasMore: false,
     });
-    const cmd = buildBranchCommand({ json: false });
+    const cmd = buildBranchCommand({ json: false, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain("main");
@@ -63,7 +63,7 @@ describe("cli branch command", () => {
   });
 
   it("`branch list` requires --repo", async () => {
-    const cmd = buildBranchCommand({ json: true });
+    const cmd = buildBranchCommand({ json: true, pretty: false });
     cmd.exitOverride();
     await expect(
       cmd.parseAsync(["list"], { from: "user" }),

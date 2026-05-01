@@ -12,6 +12,7 @@ import type {
 
 export interface RepoCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
@@ -55,7 +56,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
 }
 
 function toCtx(opts: RepoCommandOptions): OutputContext {
-  return { json: opts.json };
+  return { json: opts.json, pretty: opts.pretty };
 }
 
 function formatList(workspace: string, result: ListRepositoriesResult): string {

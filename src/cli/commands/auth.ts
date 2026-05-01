@@ -6,12 +6,13 @@ import { action } from "../action.js";
 
 export interface AuthCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
 export function buildAuthCommand(globalOpts: AuthCommandOptions): Command {
   const cmd = new Command("auth").description("Authentication operations");
-  const ctx = (): OutputContext => ({ json: globalOpts.json });
+  const ctx = (): OutputContext => ({ json: globalOpts.json, pretty: globalOpts.pretty });
 
   cmd.command("status")
     .description("Show authentication status and connectivity to Bitbucket")
@@ -23,6 +24,9 @@ export function buildAuthCommand(globalOpts: AuthCommandOptions): Command {
         `auth: ${result.authMethod}`,
         `workspace tested: ${result.workspaceTested}`,
         `reachable: ${result.reachable ? "yes" : "no"}`,
+        result.repositoriesFound !== undefined
+          ? `repositories visible: ${result.repositoriesFound}${result.hasMoreRepos ? "+" : ""}`
+          : "",
         result.error ? `error: ${result.error}` : "",
       ].filter(Boolean).join("\n"));
     }));

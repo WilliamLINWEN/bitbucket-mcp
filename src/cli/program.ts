@@ -10,6 +10,7 @@ import { buildAuthCommand } from "./commands/auth.js";
 
 export interface BbGlobals {
   readonly json: boolean;
+  readonly pretty: boolean;
   readonly workspace: string | undefined;
 }
 
@@ -20,6 +21,7 @@ export function buildProgram(): Command {
     .description("Bitbucket CLI — terminal access to the same tools exposed via MCP")
     .version("2.0.0")
     .option("--json", "output machine-readable JSON instead of human text", false)
+    .option("--pretty", "pretty-print JSON output (default is compact for piping)", false)
     .option("--workspace <slug>", "Bitbucket workspace; falls back to BITBUCKET_WORKSPACE")
     .showHelpAfterError();
 
@@ -28,6 +30,7 @@ export function buildProgram(): Command {
   // parseAsync runs.
   const globals: BbGlobals = {
     get json() { return !!program.opts().json; },
+    get pretty() { return !!program.opts().pretty; },
     get workspace() { return program.opts().workspace as string | undefined; },
   };
 

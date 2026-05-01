@@ -5,16 +5,17 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { action } from "../action.js";
-import { parsePagelenOpt } from "../utils.js";
+import { parsePagelenOpt, propagateExitOverride } from "../utils.js";
 
 export interface IssueCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
 export function buildIssueCommand(globalOpts: IssueCommandOptions): Command {
   const cmd = new Command("issue").description("Issue operations");
-  const ctx = (): OutputContext => ({ json: globalOpts.json });
+  const ctx = (): OutputContext => ({ json: globalOpts.json, pretty: globalOpts.pretty });
   const ws = (): string => resolveWorkspace(globalOpts.workspace);
 
   cmd.command("list")
@@ -25,39 +26,24 @@ export function buildIssueCommand(globalOpts: IssueCommandOptions): Command {
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
+      const kind: string | undefined = opts.kind;
       const result = await issuesCore.listIssues(createApiClient(), {
         workspace: ws(),
         repo_slug: opts.repo,
         state: opts.state,
-        kind: opts.kind,
         page: opts.page,
         pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
-        result.items.map((i: Issue) =>
+      const issues = result.items;
+      const filteredIssues = kind ? issues.filter((i: Issue) => i.kind === kind) : issues;
+      emit(ctx(), { ...result, items: filteredIssues }, () =>
+        filteredIssues.map((i: Issue) =>
           `#${i.id}\t${i.state}\t${i.kind}\t${i.title}\t${i.links.html.href}`,
         ).join("\n") || "(no issues)",
       );
     }));
 
-  // Propagate exitOverride to subcommands
-  const originalExitOverride = cmd.exitOverride.bind(cmd);
-  cmd.exitOverride = function (fn?: (err: any) => never) {
-    originalExitOverride(fn as any);
-    const applyToAll = (parent: Command) => {
-      for (const sub of parent.commands) {
-        if (fn) {
-          sub.exitOverride(fn);
-        } else {
-          sub.exitOverride();
-        }
-        applyToAll(sub);
-      }
-    };
-    applyToAll(cmd);
-    return cmd;
-  };
-
+  propagateExitOverride(cmd);
   return cmd;
 }
 

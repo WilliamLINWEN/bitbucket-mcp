@@ -12,12 +12,8 @@ export async function listIssues(
     input.page,
     input.pagelen,
   );
-  // Client-side kind filter (Bitbucket API doesn't support filtering by kind)
-  const items = input.kind
-    ? result.issues.filter((i) => i.kind === input.kind)
-    : result.issues;
   return {
-    items,
+    items: result.issues,
     page: result.page,
     pagelen: result.pagelen,
     next: result.next,

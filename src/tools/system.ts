@@ -37,6 +37,8 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 `**API Status:** Connected successfully`,
                 `**Authentication:** ${authLabel}`,
                 `**Test Workspace:** ${result.workspaceTested}`,
+                `**Repositories Found:** ${result.repositoriesFound ?? 0}`,
+                `**Has More Pages:** ${result.hasMoreRepos ? "Yes" : "No"}`,
                 "",
                 "**Available Tools:**",
                 "- repositories: ✅",

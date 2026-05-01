@@ -25,7 +25,7 @@ describe("cli repo command", () => {
       hasMore: false,
     });
 
-    const cmd = buildRepoCommand({ json: true });
+    const cmd = buildRepoCommand({ json: true, pretty: false });
     // `from: "user"` means the array is user-arg-only — no node/script entries.
     await cmd.parseAsync(["list"], { from: "user" });
 
@@ -42,7 +42,7 @@ describe("cli repo command", () => {
       full_name: "acme/r1",
     } as any);
 
-    const cmd = buildRepoCommand({ json: true });
+    const cmd = buildRepoCommand({ json: true, pretty: false });
     await cmd.parseAsync(["view", "r1"], { from: "user" });
 
     expect(repositoriesCore.getRepository).toHaveBeenCalledWith(

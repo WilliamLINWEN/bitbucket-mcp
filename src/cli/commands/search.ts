@@ -13,12 +13,13 @@ const DEFAULT_TYPES: SearchType[] = ["repositories", "pull-requests", "issues"];
 
 export interface SearchCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
 export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
   const cmd = new Command("search").description("Search across repositories, pull requests, issues, and commits");
-  const ctx = (): OutputContext => ({ json: globalOpts.json });
+  const ctx = (): OutputContext => ({ json: globalOpts.json, pretty: globalOpts.pretty });
   const ws = (): string => resolveWorkspace(globalOpts.workspace);
 
   cmd.argument("<query>", "Search query")

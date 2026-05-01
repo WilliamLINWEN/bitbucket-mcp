@@ -35,11 +35,13 @@ describe("core authStatus", () => {
 
     const result = await authStatus(fakeApi, { workspace: "acme" });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       authenticated: true,
       authMethod: "token",
       workspaceTested: "acme",
       reachable: true,
+      repositoriesFound: 0,
+      hasMoreRepos: false,
     });
   });
 
@@ -52,11 +54,13 @@ describe("core authStatus", () => {
 
     const result = await authStatus(fakeApi, { workspace: "atlassian" });
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       authenticated: false,
       authMethod: "none",
       workspaceTested: "atlassian",
       reachable: true,
+      repositoriesFound: 0,
+      hasMoreRepos: false,
     });
   });
 

@@ -5,16 +5,17 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { action } from "../action.js";
-import { parsePagelenOpt } from "../utils.js";
+import { parsePagelenOpt, propagateExitOverride } from "../utils.js";
 
 export interface BranchCommandOptions {
   json: boolean;
+  pretty: boolean;
   workspace?: string;
 }
 
 export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
   const cmd = new Command("branch").description("Branch operations");
-  const ctx = (): OutputContext => ({ json: globalOpts.json });
+  const ctx = (): OutputContext => ({ json: globalOpts.json, pretty: globalOpts.pretty });
   const ws = (): string => resolveWorkspace(globalOpts.workspace);
 
   cmd.command("list")
@@ -36,24 +37,7 @@ export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
       );
     }));
 
-  // Propagate exitOverride to subcommands
-  const originalExitOverride = cmd.exitOverride.bind(cmd);
-  cmd.exitOverride = function (fn?: (err: any) => never) {
-    originalExitOverride(fn as any);
-    const applyToAll = (parent: Command) => {
-      for (const sub of parent.commands) {
-        if (fn) {
-          sub.exitOverride(fn);
-        } else {
-          sub.exitOverride();
-        }
-        applyToAll(sub);
-      }
-    };
-    applyToAll(cmd);
-    return cmd;
-  };
-
+  propagateExitOverride(cmd);
   return cmd;
 }
 

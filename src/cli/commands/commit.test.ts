@@ -16,7 +16,7 @@ describe("cli commit command", () => {
 
   it("`commit list -r r1` calls core with the right args", async () => {
     vi.spyOn(commitsCore, "listCommits").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildCommitCommand({ json: true });
+    const cmd = buildCommitCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     expect(commitsCore.listCommits).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -29,7 +29,7 @@ describe("cli commit command", () => {
 
   it("`commit list -r r1 --branch main --pagelen 20` passes options correctly", async () => {
     vi.spyOn(commitsCore, "listCommits").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildCommitCommand({ json: true });
+    const cmd = buildCommitCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1", "--branch", "main", "--pagelen", "20"], { from: "user" });
     expect(commitsCore.listCommits).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -53,7 +53,7 @@ describe("cli commit command", () => {
       ],
       hasMore: false,
     });
-    const cmd = buildCommitCommand({ json: false });
+    const cmd = buildCommitCommand({ json: false, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain("abcdef01");
@@ -69,7 +69,7 @@ describe("cli commit command", () => {
       parents: [],
       links: { html: { href: "https://bitbucket.org/ws/r1/commits/abcdef01" } },
     } as any);
-    const cmd = buildCommitCommand({ json: true });
+    const cmd = buildCommitCommand({ json: true, pretty: false });
     await cmd.parseAsync(["view", "abcdef0123456789", "-r", "r1"], { from: "user" });
     expect(commitsCore.getCommit).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -79,7 +79,7 @@ describe("cli commit command", () => {
   });
 
   it("`commit list -r r1` requires --repo", async () => {
-    const cmd = buildCommitCommand({ json: true });
+    const cmd = buildCommitCommand({ json: true, pretty: false });
     cmd.exitOverride();
     await expect(
       cmd.parseAsync(["list"], { from: "user" }),

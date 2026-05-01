@@ -37,7 +37,7 @@ describe("core/issues", () => {
     expect(api.getIssues).toHaveBeenCalledWith("acme", "r1", undefined, undefined, undefined);
   });
 
-  it("listIssues filters by kind on the client side", async () => {
+  it("listIssues returns all issues unfiltered regardless of kind (kind filter is a caller concern)", async () => {
     const issues = [
       makeIssue(1, "bug", "Login failure"),
       makeIssue(2, "enhancement", "Improve UX"),
@@ -49,10 +49,10 @@ describe("core/issues", () => {
         hasMore: false,
       }),
     });
-    const result = await listIssues(api, { workspace: "acme", repo_slug: "r1", kind: "bug" });
-    expect(result.items).toHaveLength(2);
-    expect(result.items[0].title).toBe("Login failure");
-    expect(result.items[1].title).toBe("Crash on load");
+    // Even though the API call returns mixed kinds, core returns them all unfiltered
+    const result = await listIssues(api, { workspace: "acme", repo_slug: "r1" });
+    expect(result.items).toHaveLength(3);
+    expect(result.items.map((i) => i.kind)).toEqual(["bug", "enhancement", "bug"]);
   });
 
   it("listIssues passes pagination params to the API and returns them", async () => {

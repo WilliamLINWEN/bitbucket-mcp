@@ -95,7 +95,6 @@ export interface ListIssuesInput {
   workspace: string;
   repo_slug: string;
   state?: "new" | "open" | "resolved" | "on hold" | "invalid" | "duplicate" | "wontfix" | "closed";
-  kind?: "bug" | "enhancement" | "proposal" | "task";
   page?: string;
   pagelen?: number;
 }
@@ -245,4 +244,7 @@ export interface AuthStatusResult {
   workspaceTested: string;
   reachable: boolean;
   error?: string;
+  // Counters for adapters that want to display them. Only populated on successful probe.
+  repositoriesFound?: number;
+  hasMoreRepos?: boolean;
 }

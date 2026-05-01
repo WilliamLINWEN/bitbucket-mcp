@@ -102,10 +102,23 @@ another-repo    public    Python      https://bitbucket.org/myworkspace/another-
 
 ### Machine-Readable JSON
 
-Use the `--json` flag at the parent level (before the subcommand) to get JSON output:
+Use the `--json` flag at the parent level (before the subcommand) to get JSON output. By default, JSON is compact (no whitespace) — suitable for piping to `jq` and other tools:
 
 ```bash
 bb --json repo list
+```
+
+Output:
+```
+{"items":[{"name":"my-app","is_private":true,"language":"TypeScript","links":{"html":{"href":"https://bitbucket.org/myworkspace/my-app"}}}],"hasMore":false}
+```
+
+### Pretty-Printed JSON
+
+Add `--pretty` alongside `--json` for human-readable multi-line JSON output:
+
+```bash
+bb --json --pretty repo list
 ```
 
 Output:
@@ -122,7 +135,7 @@ Output:
 }
 ```
 
-**Note:** The `--json` flag must come before the subcommand, not after.
+**Note:** The `--json` and `--pretty` flags must come before the subcommand, not after.
 
 ## Exit Codes
 

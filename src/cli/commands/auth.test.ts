@@ -19,7 +19,7 @@ describe("cli auth command", () => {
       workspaceTested: "acme",
       reachable: true,
     });
-    const cmd = buildAuthCommand({ json: true });
+    const cmd = buildAuthCommand({ json: true, pretty: false });
     await cmd.parseAsync(["status"], { from: "user" });
     expect(systemCore.authStatus).toHaveBeenCalled();
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
@@ -31,7 +31,7 @@ describe("cli auth command", () => {
   });
 
   it("`auth login` prints token-setup instructions in human mode", async () => {
-    const cmd = buildAuthCommand({ json: false });
+    const cmd = buildAuthCommand({ json: false, pretty: false });
     await cmd.parseAsync(["login"], { from: "user" });
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
     expect(out).toContain("BITBUCKET_API_TOKEN");
@@ -39,7 +39,7 @@ describe("cli auth command", () => {
   });
 
   it("`auth logout` prints unset instructions", async () => {
-    const cmd = buildAuthCommand({ json: false });
+    const cmd = buildAuthCommand({ json: false, pretty: false });
     await cmd.parseAsync(["logout"], { from: "user" });
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
     expect(out).toContain("unset BITBUCKET_API_TOKEN");

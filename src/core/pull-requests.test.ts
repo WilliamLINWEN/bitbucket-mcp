@@ -76,6 +76,26 @@ describe("core/pull-requests", () => {
     expect(api.updatePullRequest).not.toHaveBeenCalled();
   });
 
+  it("updatePullRequest throws when title is empty string", async () => {
+    const api = fakeApi({
+      updatePullRequest: vi.fn(),
+    });
+    await expect(
+      updatePullRequest(api, { workspace: "acme", repo_slug: "r1", pull_request_id: 9, title: "" }),
+    ).rejects.toThrow("updatePullRequest: `title` cannot be empty");
+    expect(api.updatePullRequest).not.toHaveBeenCalled();
+  });
+
+  it("updatePullRequest allows empty-string description (clear-the-field semantic)", async () => {
+    const api = fakeApi({
+      updatePullRequest: vi.fn().mockResolvedValue({ id: 9 }),
+    });
+    await updatePullRequest(api, {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 9, description: "",
+    });
+    expect(api.updatePullRequest).toHaveBeenCalledWith("acme", "r1", 9, { description: "" });
+  });
+
   it("getPullRequestDiff returns the diff string in a typed envelope", async () => {
     const api = fakeApi({
       getPullRequestDiff: vi.fn().mockResolvedValue("diff --git ..."),

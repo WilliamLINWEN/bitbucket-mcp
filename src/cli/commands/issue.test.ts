@@ -16,27 +16,25 @@ describe("cli issue command", () => {
 
   it("`issue list -r r1` calls core with the right args", async () => {
     vi.spyOn(issuesCore, "listIssues").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildIssueCommand({ json: true });
+    const cmd = buildIssueCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     expect(issuesCore.listIssues).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
       repo_slug: "r1",
       state: undefined,
-      kind: undefined,
       page: undefined,
       pagelen: undefined,
     });
   });
 
-  it("`issue list -r r1 --state open --kind bug` passes filters correctly", async () => {
+  it("`issue list -r r1 --state open --kind bug` passes state to core and applies kind filter client-side", async () => {
     vi.spyOn(issuesCore, "listIssues").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildIssueCommand({ json: true });
+    const cmd = buildIssueCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1", "--state", "open", "--kind", "bug"], { from: "user" });
     expect(issuesCore.listIssues).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
       repo_slug: "r1",
       state: "open",
-      kind: "bug",
       page: undefined,
       pagelen: undefined,
     });
@@ -59,7 +57,7 @@ describe("cli issue command", () => {
       ],
       hasMore: false,
     });
-    const cmd = buildIssueCommand({ json: false });
+    const cmd = buildIssueCommand({ json: false, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain("#42");
@@ -68,7 +66,7 @@ describe("cli issue command", () => {
   });
 
   it("`issue list` requires --repo", async () => {
-    const cmd = buildIssueCommand({ json: true });
+    const cmd = buildIssueCommand({ json: true, pretty: false });
     cmd.exitOverride();
     await expect(
       cmd.parseAsync(["list"], { from: "user" }),
@@ -77,13 +75,12 @@ describe("cli issue command", () => {
 
   it("`issue list -r r1 --pagelen 20` passes pagelen as integer", async () => {
     vi.spyOn(issuesCore, "listIssues").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildIssueCommand({ json: true });
+    const cmd = buildIssueCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1", "--pagelen", "20"], { from: "user" });
     expect(issuesCore.listIssues).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
       repo_slug: "r1",
       state: undefined,
-      kind: undefined,
       page: undefined,
       pagelen: 20,
     });

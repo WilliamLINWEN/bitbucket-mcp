@@ -9,12 +9,14 @@ export async function authStatus(
   const workspaceTested = input.workspace ?? process.env.BITBUCKET_WORKSPACE ?? "atlassian";
   const authMethod = await api.getAuthMethod();
   try {
-    await repositoriesCore.listRepositories(api, { workspace: workspaceTested });
+    const result = await repositoriesCore.listRepositories(api, { workspace: workspaceTested });
     return {
       authenticated: authMethod !== "none",
       authMethod,
       workspaceTested,
       reachable: true,
+      repositoriesFound: result.items.length,
+      hasMoreRepos: result.hasMore,
     };
   } catch (error) {
     return {

@@ -16,7 +16,7 @@ describe("cli pipeline command", () => {
 
   it("`pipeline list -r r1` calls core", async () => {
     vi.spyOn(pipelinesCore, "listPipelines").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
     expect(pipelinesCore.listPipelines).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme", repo_slug: "r1", page: undefined, pagelen: undefined,
@@ -25,7 +25,7 @@ describe("cli pipeline command", () => {
 
   it("`pipeline view abc -r r1` calls core", async () => {
     vi.spyOn(pipelinesCore, "getPipeline").mockResolvedValue({ uuid: "abc" } as any);
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     await cmd.parseAsync(["view", "abc", "-r", "r1"], { from: "user" });
     expect(pipelinesCore.getPipeline).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme", repo_slug: "r1", pipeline_uuid: "abc",
@@ -34,7 +34,7 @@ describe("cli pipeline command", () => {
 
   it("`pipeline trigger -r r1 --branch main --var FOO=BAR` parses variables", async () => {
     vi.spyOn(pipelinesCore, "triggerPipeline").mockResolvedValue({ uuid: "p" } as any);
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     await cmd.parseAsync(
       ["trigger", "-r", "r1", "--branch", "main", "--var", "FOO=BAR"],
       { from: "user" },
@@ -47,7 +47,7 @@ describe("cli pipeline command", () => {
   });
 
   it("`pipeline trigger -r r1` without ref/commit throws", async () => {
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     cmd.exitOverride();
     await expect(
       cmd.parseAsync(["trigger", "-r", "r1"], { from: "user" }),
@@ -60,7 +60,7 @@ describe("cli pipeline command", () => {
     }) as any;
     const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
     try {
-      const cmd = buildPipelineCommand({ json: true });
+      const cmd = buildPipelineCommand({ json: true, pretty: false });
       cmd.exitOverride();
       await expect(
         cmd.parseAsync(["trigger", "-r", "r1", "--branch", "main", "--tag", "v1"], { from: "user" }),
@@ -75,7 +75,7 @@ describe("cli pipeline command", () => {
 
   it("`pipeline step list p1 -r r1` calls core", async () => {
     vi.spyOn(pipelinesCore, "listPipelineSteps").mockResolvedValue({ items: [], hasMore: false });
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     await cmd.parseAsync(["step", "list", "p1", "-r", "r1"], { from: "user" });
     expect(pipelinesCore.listPipelineSteps).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme", repo_slug: "r1", pipeline_uuid: "p1",
@@ -85,7 +85,7 @@ describe("cli pipeline command", () => {
 
   it("`pipeline step log p1 s1 -r r1` prints the log", async () => {
     vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: "abc" });
-    const cmd = buildPipelineCommand({ json: true });
+    const cmd = buildPipelineCommand({ json: true, pretty: false });
     await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1"], { from: "user" });
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
     expect(out).toContain("abc");

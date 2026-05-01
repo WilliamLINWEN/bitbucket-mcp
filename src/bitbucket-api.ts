@@ -266,14 +266,20 @@ export class BitbucketAPI {
       });
     }
 
-    // Log authentication status (without exposing credentials)
-    void this.authProvider.isAuthenticated().then((authed) => {
-      console.error(
-        authed
-          ? "BitbucketAPI initialized with credentials"
-          : "BitbucketAPI initialized without credentials (public access only)",
-      );
-    });
+    if (process.env.DEBUG_BITBUCKET_MCP) {
+      void this.authProvider
+        .isAuthenticated()
+        .then((authed) => {
+          console.error(
+            authed
+              ? "BitbucketAPI initialized with credentials"
+              : "BitbucketAPI initialized without credentials (public access only)",
+          );
+        })
+        .catch(() => {
+          // best-effort log; ignore failures
+        });
+    }
   }
 
   private async applyAuthHeader(headers: Record<string, string>): Promise<void> {

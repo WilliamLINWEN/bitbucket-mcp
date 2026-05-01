@@ -244,6 +244,16 @@ function registerUpdatePrDescription(registerTool: ReturnType<typeof makeRegiste
             ],
           };
         }
+        if (title === "") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "❌ 'title' cannot be empty. Provide a non-empty title or omit the field.",
+              },
+            ],
+          };
+        }
 
         const pr = await pullRequestsCore.updatePullRequest(api, {
           workspace, repo_slug, pull_request_id, title, description,

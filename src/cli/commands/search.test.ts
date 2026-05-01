@@ -35,7 +35,7 @@ describe("cli search command", () => {
 
   it("`search myquery` calls core with default types and limit", async () => {
     vi.spyOn(searchCore, "search").mockResolvedValue(makeSearchResult() as any);
-    const cmd = buildSearchCommand({ json: true });
+    const cmd = buildSearchCommand({ json: true, pretty: false });
     await cmd.parseAsync(["myquery"], { from: "user" });
     expect(searchCore.search).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -47,7 +47,7 @@ describe("cli search command", () => {
 
   it("`search myquery --types repositories,commits --limit 5` passes custom options", async () => {
     vi.spyOn(searchCore, "search").mockResolvedValue(makeSearchResult() as any);
-    const cmd = buildSearchCommand({ json: true });
+    const cmd = buildSearchCommand({ json: true, pretty: false });
     await cmd.parseAsync(["myquery", "--types", "repositories,commits", "--limit", "5"], { from: "user" });
     expect(searchCore.search).toHaveBeenCalledWith(expect.anything(), {
       workspace: "acme",
@@ -74,7 +74,7 @@ describe("cli search command", () => {
       sections: [{ type: "repositories", searched: 1, totalRepos: 1, hasMoreRepos: false, errors: [] }],
       totalHits: 1,
     } as any);
-    const cmd = buildSearchCommand({ json: false });
+    const cmd = buildSearchCommand({ json: false, pretty: false });
     await cmd.parseAsync(["myquery"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain("repositories: 1 hits");
@@ -83,7 +83,7 @@ describe("cli search command", () => {
 
   it("`search myquery` outputs 'No results found' when totalHits is 0", async () => {
     vi.spyOn(searchCore, "search").mockResolvedValue(makeSearchResult() as any);
-    const cmd = buildSearchCommand({ json: false });
+    const cmd = buildSearchCommand({ json: false, pretty: false });
     await cmd.parseAsync(["myquery"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain(`No results found for "myquery"`);
@@ -92,7 +92,7 @@ describe("cli search command", () => {
   it("`search myquery` in JSON mode outputs full SearchResult", async () => {
     const mockResult = makeSearchResult({ query: "myquery", workspace: "acme" });
     vi.spyOn(searchCore, "search").mockResolvedValue(mockResult as any);
-    const cmd = buildSearchCommand({ json: true });
+    const cmd = buildSearchCommand({ json: true, pretty: false });
     await cmd.parseAsync(["myquery"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     const parsed = JSON.parse(written);
@@ -101,7 +101,7 @@ describe("cli search command", () => {
   });
 
   it("`search` without a query argument fails", async () => {
-    const cmd = buildSearchCommand({ json: true });
+    const cmd = buildSearchCommand({ json: true, pretty: false });
     cmd.exitOverride();
     await expect(
       cmd.parseAsync([], { from: "user" }),
