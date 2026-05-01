@@ -53,6 +53,44 @@ export interface GetPullRequestInput {
 }
 export type GetPullRequestResult = PullRequest;
 
+export type SearchType = "repositories" | "pull-requests" | "issues" | "commits";
+
+export interface SearchInput {
+  workspace: string;
+  query: string;
+  types: SearchType[];
+  limit: number;
+}
+
+export interface SearchHit<T> {
+  type: SearchType;
+  repo: string;       // repo slug
+  item: T;
+}
+
+export interface SearchSectionMeta {
+  type: SearchType;
+  searched: number;       // how many repos were inspected
+  totalRepos: number;     // total in the page that was retrieved
+  hasMoreRepos: boolean;  // whether the listRepositories call had a next page
+  errors: Array<{ repo: string; message: string }>;
+}
+
+export interface SearchResult {
+  workspace: string;
+  query: string;
+  totalRepos: number;
+  hasMoreRepos: boolean;
+  hits: {
+    repositories: SearchHit<Repository>[];
+    pullRequests: SearchHit<PullRequest>[];
+    issues: SearchHit<Issue>[];
+    commits: SearchHit<Commit>[];
+  };
+  sections: SearchSectionMeta[];
+  totalHits: number;
+}
+
 export interface ListIssuesInput {
   workspace: string;
   repo_slug: string;

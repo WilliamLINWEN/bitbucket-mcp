@@ -5,6 +5,7 @@ import { buildPipelineCommand } from "./commands/pipeline.js";
 import { buildCommitCommand } from "./commands/commit.js";
 import { buildBranchCommand } from "./commands/branch.js";
 import { buildIssueCommand } from "./commands/issue.js";
+import { buildSearchCommand } from "./commands/search.js";
 
 export interface BbGlobals {
   readonly json: boolean;
@@ -35,6 +36,7 @@ export function buildProgram(): Command {
   program.addCommand(buildCommitCommand(globals));
   program.addCommand(buildBranchCommand(globals));
   program.addCommand(buildIssueCommand(globals));
+  program.addCommand(buildSearchCommand(globals));
 
   return program;
 }
