@@ -53,6 +53,22 @@ export interface GetPullRequestInput {
 }
 export type GetPullRequestResult = PullRequest;
 
+export interface ListCommitsInput {
+  workspace: string;
+  repo_slug: string;
+  branch?: string;
+  page?: string;
+  pagelen?: number;
+}
+export type ListCommitsResult = PaginatedResult<Commit>;
+
+export interface GetCommitInput {
+  workspace: string;
+  repo_slug: string;
+  commit_hash: string;
+}
+export type GetCommitResult = Commit;
+
 // Add additional input/output types as later tasks introduce new core modules.
 // Keep this file the single source of truth for the cross-adapter contract.
 
