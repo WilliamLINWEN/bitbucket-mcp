@@ -234,3 +234,15 @@ export interface GetPipelineStepLogInput {
   step_uuid: string;
 }
 export type GetPipelineStepLogResult = { log: string };
+
+export interface AuthStatusInput {
+  workspace?: string;
+}
+
+export interface AuthStatusResult {
+  authenticated: boolean;
+  authMethod: "token" | "basic" | "none";
+  workspaceTested: string;
+  reachable: boolean;
+  error?: string;
+}

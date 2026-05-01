@@ -4,12 +4,7 @@ import { BitbucketAPI } from "../bitbucket-api.js";
 import { metricsCollector } from "../metrics.js";
 import { withRequestTracking } from "../utils/request-tracking.js";
 import { makeRegister } from "./helpers.js";
-
-// Environment variables for authentication
-const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
-const BITBUCKET_APP_PASSWORD = process.env.BITBUCKET_APP_PASSWORD;
-const BITBUCKET_API_TOKEN = process.env.BITBUCKET_API_TOKEN;
-const isAuthenticated = !!(BITBUCKET_API_TOKEN || (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD));
+import * as systemCore from "../core/system.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -22,14 +17,15 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
       workspace: z.string().optional().describe("Optional workspace to test access"),
     },
     withRequestTracking("health-check", async ({ workspace }) => {
-      try {
-        const testWorkspace = workspace || process.env.BITBUCKET_WORKSPACE || "atlassian"; // Use Atlassian's public workspace as default
+      console.error(`Testing connectivity to Bitbucket API...`);
 
-        console.error(`Testing connectivity to Bitbucket API with workspace: ${testWorkspace}`);
+      const result = await systemCore.authStatus(bitbucketAPI, { workspace });
+      const isAuthenticated = result.authenticated;
 
-        const result = await bitbucketAPI.listRepositories(testWorkspace);
-
-        const authStatus = isAuthenticated ? "Authenticated" : "Unauthenticated (public access only)";
+      if (result.reachable) {
+        const authLabel = isAuthenticated
+          ? "Authenticated"
+          : "Unauthenticated (public access only)";
 
         return {
           content: [
@@ -39,10 +35,8 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
                 "✅ **Bitbucket MCP Server Health Check**",
                 "",
                 `**API Status:** Connected successfully`,
-                `**Authentication:** ${authStatus}`,
-                `**Test Workspace:** ${testWorkspace}`,
-                `**Repositories Found:** ${result.repositories.length}`,
-                `**Has More Pages:** ${result.hasMore ? "Yes" : "No"}`,
+                `**Authentication:** ${authLabel}`,
+                `**Test Workspace:** ${result.workspaceTested}`,
                 "",
                 "**Available Tools:**",
                 "- repositories: ✅",
@@ -72,9 +66,7 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
             },
           ],
         };
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-
+      } else {
         return {
           content: [
             {
@@ -82,8 +74,8 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
               text: [
                 "❌ **Bitbucket MCP Server Health Check Failed**",
                 "",
-                `**Error:** ${errorMessage}`,
-                `**Test Workspace:** ${workspace || "atlassian"}`,
+                `**Error:** ${result.error}`,
+                `**Test Workspace:** ${result.workspaceTested}`,
                 "",
                 "**Possible Issues:**",
                 "- Network connectivity problems",
