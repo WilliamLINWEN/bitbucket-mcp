@@ -4,6 +4,7 @@ import { BitbucketAPI } from "../bitbucket-api.js";
 import { withRequestTracking } from "../utils/request-tracking.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as prCommentsCore from "../core/pr-comments.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -40,8 +41,8 @@ async function listPrComments(
   opts: { page?: string; pagelen?: number },
 ) {
   try {
-    const result = await api.getPullRequestComments(workspace, repo_slug, pull_request_id, { page: opts.page, pagelen: opts.pagelen });
-    const comments = result.comments;
+    const result = await prCommentsCore.listPrComments(api, { workspace, repo_slug, pull_request_id, page: opts.page, pagelen: opts.pagelen });
+    const comments = result.items;
 
     if (comments.length === 0) {
       return {
@@ -119,7 +120,7 @@ async function getPrComment(
   comment_id: number,
 ) {
   try {
-    const comment = await api.getPullRequestComment(workspace, repo_slug, pull_request_id, comment_id);
+    const comment = await prCommentsCore.getPrComment(api, { workspace, repo_slug, pull_request_id, comment_id });
 
     const commentInfo = [
       `# 💬 Comment #${comment.id} on PR #${pull_request_id}`,
@@ -191,18 +192,6 @@ function registerCreatePrComment(registerTool: ReturnType<typeof makeRegister>, 
     async ({ workspace: ws, repo_slug, pull_request_id, content, file_path, from_line, to_line, parent_id }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        // Check if authentication is available for creating comments
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Creating comments requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
-              },
-            ],
-          };
-        }
-
         // Set up inline options if file_path is provided
         const inlineOptions = file_path ? {
           path: file_path,
@@ -210,14 +199,14 @@ function registerCreatePrComment(registerTool: ReturnType<typeof makeRegister>, 
           to: to_line
         } : undefined;
 
-        const comment = await api.createPullRequestComment(
+        const comment = await prCommentsCore.createPrComment(api, {
           workspace,
           repo_slug,
           pull_request_id,
           content,
-          inlineOptions,
-          parent_id
-        );
+          inline: inlineOptions,
+          parent_id,
+        });
 
         // Build the success message
         const successLines = [

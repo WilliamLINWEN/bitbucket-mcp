@@ -1,5 +1,6 @@
 import fetch, { RequestInit } from "node-fetch";
 import { recordError, createApiErrorContext } from "./error-context.js";
+import { StaticAuthProvider, type AuthProvider } from "./core/auth.js";
 
 // Bitbucket API configuration
 const BITBUCKET_API_BASE = "https://api.bitbucket.org/2.0";
@@ -247,23 +248,57 @@ export interface ApiError extends Error {
 }
 
 export class BitbucketAPI {
-  private username?: string;
-  private appPassword?: string;
-  private apiToken?: string;
+  private authProvider: AuthProvider;
 
-  constructor(username?: string, appPassword?: string, apiToken?: string) {
-    this.username = username || process.env.BITBUCKET_USERNAME;
-    this.appPassword = appPassword || process.env.BITBUCKET_APP_PASSWORD;
-    this.apiToken = apiToken || process.env.BITBUCKET_API_TOKEN;
-
-    // Log authentication status (without exposing credentials)
-    if (this.apiToken) {
-      console.error("BitbucketAPI initialized with API Token credentials");
-    } else if (this.username && this.appPassword) {
-      console.error(`BitbucketAPI initialized with App Password credentials for user: ${this.username}`);
+  constructor(usernameOrProvider?: string | AuthProvider, appPassword?: string, apiToken?: string) {
+    if (usernameOrProvider !== null && typeof usernameOrProvider === 'object' && 'getAuthHeader' in usernameOrProvider) {
+      // AuthProvider overload
+      this.authProvider = usernameOrProvider;
     } else {
-      console.error("BitbucketAPI initialized without credentials (public access only)");
+      // Legacy positional overload: capture values at construction time, fall back to env
+      const username = (usernameOrProvider as string | undefined) || process.env.BITBUCKET_USERNAME;
+      const resolvedAppPassword = appPassword || process.env.BITBUCKET_APP_PASSWORD;
+      const resolvedApiToken = apiToken || process.env.BITBUCKET_API_TOKEN;
+      this.authProvider = new StaticAuthProvider({
+        username,
+        appPassword: resolvedAppPassword,
+        apiToken: resolvedApiToken,
+      });
     }
+
+    if (process.env.DEBUG_BITBUCKET_MCP) {
+      void this.authProvider
+        .isAuthenticated()
+        .then((authed) => {
+          console.error(
+            authed
+              ? "BitbucketAPI initialized with credentials"
+              : "BitbucketAPI initialized without credentials (public access only)",
+          );
+        })
+        .catch(() => {
+          // best-effort log; ignore failures
+        });
+    }
+  }
+
+  private async applyAuthHeader(headers: Record<string, string>): Promise<void> {
+    const authHeader = await this.authProvider.getAuthHeader();
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
+  }
+
+  /**
+   * Return the auth method currently in use by this instance's AuthProvider,
+   * without mutating any state. Useful for diagnostics / auth-status checks.
+   */
+  public async getAuthMethod(): Promise<"token" | "basic" | "none"> {
+    const header = await this.authProvider.getAuthHeader();
+    if (!header) return "none";
+    if (header.startsWith("Bearer ")) return "token";
+    if (header.startsWith("Basic ")) return "basic";
+    return "none";
   }
 
   private async makeRequest<T>(url: string, options: RequestInit = {}, requestOptions: RequestOptions = {}): Promise<T> {
@@ -276,15 +311,7 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.username && this.apiToken) {
-      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
-      headers['Authorization'] = `Basic ${auth}`;
-    } else if (this.apiToken) {
-      headers['Authorization'] = `Bearer ${this.apiToken}`;
-    } else if (this.username && this.appPassword) {
-      const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
-      headers['Authorization'] = `Basic ${auth}`;
-    }
+    await this.applyAuthHeader(headers);
 
     console.error(`Making request to: ${url}`);
 
@@ -365,15 +392,7 @@ export class BitbucketAPI {
     };
 
     // Add authentication if credentials are available
-    if (this.username && this.apiToken) {
-      const auth = Buffer.from(`${this.username}:${this.apiToken}`).toString('base64');
-      headers['Authorization'] = `Basic ${auth}`;
-    } else if (this.apiToken) {
-      headers['Authorization'] = `Bearer ${this.apiToken}`;
-    } else if (this.username && this.appPassword) {
-      const auth = Buffer.from(`${this.username}:${this.appPassword}`).toString('base64');
-      headers['Authorization'] = `Basic ${auth}`;
-    }
+    await this.applyAuthHeader(headers);
 
     console.error(`Making text request to: ${url}`);
 

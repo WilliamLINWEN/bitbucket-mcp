@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BitbucketAPI } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as issuesCore from "../core/issues.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -22,30 +23,34 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace: ws, repo_slug, state, kind, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        const result = await bitbucketAPI.getIssues(workspace, repo_slug, state, page, pagelen);
-        const issues = result.issues;
+        const result = await issuesCore.listIssues(bitbucketAPI, {
+          workspace,
+          repo_slug,
+          state,
+          page,
+          pagelen,
+        });
+
+        const issues = result.items;
+        const filteredIssues = kind ? issues.filter((i) => i.kind === kind) : issues;
 
         if (issues.length === 0) {
           return {
             content: [
               {
                 type: "text",
-                text: `No issues found in '${workspace}/${repo_slug}'${state ? ` with state '${state}'` : ''}${kind ? ` of kind '${kind}'` : ''}.`,
+                text: `No issues found in '${workspace}/${repo_slug}'.${result.next ? `\nNext page: ${result.next}` : ''}`,
               },
             ],
           };
         }
 
-        // Filter by kind if specified (client-side since API doesn't support it)
-        const filteredIssues = kind ? issues.filter(issue => issue.kind === kind) : issues;
-
-        if (filteredIssues.length === 0) {
-          const paginationHint = result.hasMore ? ` No matching issues on this page; use the next page URL to continue searching.` : '';
+        if (filteredIssues.length === 0 && kind) {
           return {
             content: [
               {
                 type: "text",
-                text: `No issues found in '${workspace}/${repo_slug}' matching the specified criteria.${paginationHint}${result.next ? `\nNext page: ${result.next}` : ''}`,
+                text: `No issues of kind '${kind}' found among the ${issues.length} issues on this page.${result.next ? `\nNext page: ${result.next}` : ''}`,
               },
             ],
           };

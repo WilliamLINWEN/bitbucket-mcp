@@ -4,6 +4,7 @@ import { BitbucketAPI } from "../bitbucket-api.js";
 import { withRequestTracking } from "../utils/request-tracking.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as pullRequestsCore from "../core/pull-requests.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -45,8 +46,10 @@ async function listPullRequests(
   opts: { state?: any; page?: string; pagelen?: number },
 ) {
   try {
-    const result = await api.getPullRequests(workspace, repo_slug, opts.state, opts.page, opts.pagelen);
-    const pullRequests = result.pullRequests;
+    const result = await pullRequestsCore.listPullRequests(api, {
+      workspace, repo_slug, state: opts.state, page: opts.page, pagelen: opts.pagelen,
+    });
+    const pullRequests = result.items;
 
     const stateList = opts.state ? (Array.isArray(opts.state) ? opts.state : [opts.state]) : [];
     const stateText = stateList.length > 0 ? ` with state [${stateList.join(", ")}]` : "";
@@ -75,7 +78,7 @@ async function listPullRequests(
     const paginationText = [
       result.page !== undefined ? `Page: ${result.page}` : null,
       result.pagelen !== undefined ? `Page length: ${result.pagelen}` : null,
-      result.next ? `Next page: ${result.next}` : null,
+      result.next !== undefined ? `Next page: ${result.next}` : null,
     ].filter(Boolean).join("\n");
 
     return {
@@ -100,7 +103,7 @@ async function listPullRequests(
 
 async function getPullRequest(api: BitbucketAPI, workspace: string, repo_slug: string, pr_id: number) {
   try {
-    const pr = await api.getPullRequest(workspace, repo_slug, pr_id);
+    const pr = await pullRequestsCore.getPullRequest(api, { workspace, repo_slug, pr_id });
 
     const prInfo = [
       `# 🔀 Pull Request #${pr.id}: ${pr.title}`,
@@ -155,19 +158,8 @@ function registerCreatePullRequest(registerTool: ReturnType<typeof makeRegister>
     async ({ workspace: ws, repo_slug, title, source_branch, destination_branch, description, close_source_branch, reviewers }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        // Auth guard — creating a PR always requires credentials
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "❌ Authentication required: Creating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
-              },
-            ],
-          };
-        }
-
-        const pr = await api.createPullRequest(workspace, repo_slug, {
+        const pr = await pullRequestsCore.createPullRequest(api, {
+          workspace, repo_slug,
           title,
           source_branch,
           destination_branch,
@@ -242,7 +234,7 @@ function registerUpdatePrDescription(registerTool: ReturnType<typeof makeRegiste
     async ({ workspace: ws, repo_slug, pull_request_id, title, description }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        if (!title && description === undefined) {
+        if (title === undefined && description === undefined) {
           return {
             content: [
               {
@@ -252,20 +244,20 @@ function registerUpdatePrDescription(registerTool: ReturnType<typeof makeRegiste
             ],
           };
         }
-
-        // Check if authentication is available
-        if (!process.env.BITBUCKET_API_TOKEN && (!process.env.BITBUCKET_USERNAME || !process.env.BITBUCKET_APP_PASSWORD)) {
+        if (title === "") {
           return {
             content: [
               {
                 type: "text",
-                text: "❌ Authentication required: Updating a pull request requires either BITBUCKET_API_TOKEN or both BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables to be set.",
+                text: "❌ 'title' cannot be empty. Provide a non-empty title or omit the field.",
               },
             ],
           };
         }
 
-        const pr = await api.updatePullRequest(workspace, repo_slug, pull_request_id, { title, description });
+        const pr = await pullRequestsCore.updatePullRequest(api, {
+          workspace, repo_slug, pull_request_id, title, description,
+        });
 
         const prInfo = [
           `✅ **Successfully updated PR #${pr.id}**`,
@@ -327,7 +319,9 @@ function registerGetPrDiff(registerTool: ReturnType<typeof makeRegister>, api: B
     async ({ workspace: ws, repo_slug, pull_request_id }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        const diff = await api.getPullRequestDiff(workspace, repo_slug, pull_request_id);
+        const { diff } = await pullRequestsCore.getPullRequestDiff(api, {
+          workspace, repo_slug, pull_request_id,
+        });
 
         if (!diff || diff.trim().length === 0) {
           return {

@@ -146,31 +146,46 @@ describe('registerTools', () => {
   });
 
   describe('Pipelines', () => {
-    it('returns authentication error when triggering pipeline without credentials', async () => {
+    it('propagates API error when triggering pipeline fails (no longer short-circuits on missing env vars)', async () => {
       const server = new FakeServer();
       const bitbucketAPI = {
-        triggerPipeline: vi.fn(),
+        triggerPipeline: vi.fn().mockRejectedValue(
+          new Error("Failed to fetch data: 401 Unauthorized"),
+        ),
       };
 
-      // Ensure no auth env vars are set
-      delete process.env.BITBUCKET_API_TOKEN;
-      delete process.env.BITBUCKET_USERNAME;
-      delete process.env.BITBUCKET_APP_PASSWORD;
+      const prevApiToken = process.env.BITBUCKET_API_TOKEN;
+      const prevUsername = process.env.BITBUCKET_USERNAME;
+      const prevAppPassword = process.env.BITBUCKET_APP_PASSWORD;
+      try {
+        // Ensure no auth env vars are set
+        delete process.env.BITBUCKET_API_TOKEN;
+        delete process.env.BITBUCKET_USERNAME;
+        delete process.env.BITBUCKET_APP_PASSWORD;
 
-      registerTools(server as any, bitbucketAPI as any);
-      const tool = server.tools.get('trigger-pipeline');
-      expect(tool).toBeDefined();
+        registerTools(server as any, bitbucketAPI as any);
+        const tool = server.tools.get('trigger-pipeline');
+        expect(tool).toBeDefined();
 
-      const input = buildInput(tool!.schema, {
-        workspace: 'ws',
-        repo_slug: 'repo',
-        ref_type: 'branch',
-        ref_name: 'main',
-      });
+        const input = buildInput(tool!.schema, {
+          workspace: 'ws',
+          repo_slug: 'repo',
+          ref_type: 'branch',
+          ref_name: 'main',
+        });
 
-      const result = await tool!.handler(input);
-      expect(result.content[0].text).toContain('❌ Authentication required');
-      expect(bitbucketAPI.triggerPipeline).not.toHaveBeenCalled();
+        const result = await tool!.handler(input);
+        // The env-var preflight was removed; auth errors surface from the API layer.
+        expect(result.content[0].text).toContain('❌ Failed to trigger pipeline');
+        expect(bitbucketAPI.triggerPipeline).toHaveBeenCalled();
+      } finally {
+        if (prevApiToken !== undefined) process.env.BITBUCKET_API_TOKEN = prevApiToken;
+        else delete process.env.BITBUCKET_API_TOKEN;
+        if (prevUsername !== undefined) process.env.BITBUCKET_USERNAME = prevUsername;
+        else delete process.env.BITBUCKET_USERNAME;
+        if (prevAppPassword !== undefined) process.env.BITBUCKET_APP_PASSWORD = prevAppPassword;
+        else delete process.env.BITBUCKET_APP_PASSWORD;
+      }
     });
 
     it('triggers a pipeline with variables correctly', async () => {

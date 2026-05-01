@@ -1,19 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { BitbucketAPI, Repository } from "../bitbucket-api.js";
+import { BitbucketAPI } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
-import { recordError, createApiErrorContext } from "../error-context.js";
-
-/**
- * Derive the URL-safe repo slug from a Repository object.
- * Uses the second segment of `full_name` ("workspace/slug"), falling back to
- * `name` if `full_name` has an unexpected shape.
- */
-function getRepoSlug(repo: Repository): string {
-  const parts = repo.full_name.split("/");
-  return parts[1] ?? repo.name;
-}
+import * as searchCore from "../core/search.js";
+import type { SearchResult, SearchSectionMeta } from "../core/types.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -29,267 +20,10 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
       limit: z.number().min(1).max(50).optional().default(10).describe("Maximum number of results per type"),
     },
     async ({ workspace: ws, query, types, limit }) => {
-      const searchResults: string[] = [];
-      let totalResults = 0;
-
       try {
         const workspace = resolveWorkspace(ws);
-
-        // Lazy-memoized repository list — fetched at most once per handler invocation
-        let cachedRepos: Awaited<ReturnType<typeof bitbucketAPI.listRepositories>> | null = null;
-        let cachedReposError: Error | null = null;
-        const getRepos = async () => {
-          if (cachedReposError) throw cachedReposError;
-          if (cachedRepos) return cachedRepos;
-          try {
-            cachedRepos = await bitbucketAPI.listRepositories(workspace, { pagelen: 100 });
-            return cachedRepos;
-          } catch (error) {
-            cachedReposError = error instanceof Error ? error : new Error(String(error));
-            throw cachedReposError;
-          }
-        };
-
-        // Search repositories
-        if (types.includes("repositories")) {
-          try {
-            const repoResult = await getRepos();
-            const repos = repoResult.repositories;
-            const matchingRepos = repos.filter(repo =>
-              repo.name.toLowerCase().includes(query.toLowerCase()) ||
-              (repo.description && repo.description.toLowerCase().includes(query.toLowerCase()))
-            ).slice(0, limit);
-
-            if (matchingRepos.length > 0) {
-              searchResults.push(`## 📁 Repositories (${matchingRepos.length} found)`);
-              matchingRepos.forEach(repo => {
-                searchResults.push([
-                  `**${repo.name}** - ${repo.description || "No description"}`,
-                  `  Language: ${repo.language || "Unknown"} | Private: ${repo.is_private ? "Yes" : "No"}`,
-                  `  URL: ${repo.links.html.href}`,
-                  ""
-                ].join("\n"));
-              });
-              totalResults += matchingRepos.length;
-            }
-
-            // Coverage note
-            const coverageNote = repoResult.next
-              ? `_(Searched ${repos.length} repositories — more available, refine query for complete results)_`
-              : `_(Searched ${repos.length} repositories)_`;
-            searchResults.push(coverageNote);
-          } catch (error) {
-            searchResults.push(`## 📁 Repositories - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        // Search pull requests
-        if (types.includes("pull-requests")) {
-          try {
-            const repoResult = await getRepos();
-            const repos = repoResult.repositories;
-            let prCount = 0;
-            let prIterCount = 0;
-
-            for (const repo of repos) {
-              if (prCount >= limit) break;
-              prIterCount++;
-              const slug = getRepoSlug(repo);
-              try {
-                const prResult = await bitbucketAPI.getPullRequests(workspace, slug, undefined, undefined, undefined);
-                const matchingPRs = prResult.pullRequests.filter(pr =>
-                  pr.title.toLowerCase().includes(query.toLowerCase()) ||
-                  (pr.description && pr.description.toLowerCase().includes(query.toLowerCase()))
-                ).slice(0, limit - prCount);
-
-                if (matchingPRs.length > 0) {
-                  if (totalResults === 0 || !searchResults.some(r => r.includes("Pull Requests"))) {
-                    searchResults.push(`## 🔀 Pull Requests (${matchingPRs.length} found in ${repo.name})`);
-                  }
-                  matchingPRs.forEach(pr => {
-                    searchResults.push([
-                      `**PR #${pr.id}**: ${pr.title} (${repo.name})`,
-                      `  State: ${pr.state} | Author: ${pr.author.display_name}`,
-                      `  ${pr.source.branch.name} → ${pr.destination.branch.name}`,
-                      `  URL: ${pr.links.html.href}`,
-                      ""
-                    ].join("\n"));
-                  });
-                  totalResults += matchingPRs.length;
-                  prCount += matchingPRs.length;
-                }
-              } catch (error) {
-                const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search PRs in ${slug}: ${msg}`);
-                recordError(
-                  error instanceof Error ? error : new Error(msg),
-                  'getPullRequests',
-                  'search-tool',
-                  createApiErrorContext(`/repositories/${workspace}/${slug}/pullrequests`, 'GET', { metadata: { workspace, repository: slug } })
-                );
-              }
-            }
-
-            // Coverage note
-            let coverageNote: string;
-            if (prIterCount < repos.length) {
-              coverageNote = `_(Searched ${prIterCount} of ${repos.length} retrieved repositories for PRs — hit limit of ${limit}, more matches may exist)_`;
-            } else if (repoResult.next) {
-              coverageNote = `_(Searched all ${repos.length} retrieved repositories for PRs — more available, refine query for complete results)_`;
-            } else {
-              coverageNote = `_(Searched all ${repos.length} repositories for PRs)_`;
-            }
-            searchResults.push(coverageNote);
-          } catch (error) {
-            searchResults.push(`## 🔀 Pull Requests - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        // Search issues
-        if (types.includes("issues")) {
-          try {
-            const repoResult = await getRepos();
-            const repos = repoResult.repositories;
-            let issueCount = 0;
-            let issueIterCount = 0;
-
-            for (const repo of repos) {
-              if (issueCount >= limit) break;
-              issueIterCount++;
-              const slug = getRepoSlug(repo);
-              try {
-                const issueResult = await bitbucketAPI.getIssues(workspace, slug, undefined, undefined, undefined);
-                const matchingIssues = issueResult.issues.filter(issue =>
-                  issue.title.toLowerCase().includes(query.toLowerCase()) ||
-                  (issue.content?.raw && issue.content.raw.toLowerCase().includes(query.toLowerCase()))
-                ).slice(0, limit - issueCount);
-
-                if (matchingIssues.length > 0) {
-                  if (totalResults === 0 || !searchResults.some(r => r.includes("Issues"))) {
-                    searchResults.push(`## 🐛 Issues (${matchingIssues.length} found in ${repo.name})`);
-                  }
-                  matchingIssues.forEach(issue => {
-                    searchResults.push([
-                      `**Issue #${issue.id}**: ${issue.title} (${repo.name})`,
-                      `  State: ${issue.state} | Kind: ${issue.kind} | Priority: ${issue.priority}`,
-                      `  Reporter: ${issue.reporter.display_name}`,
-                      `  URL: ${issue.links.html.href}`,
-                      ""
-                    ].join("\n"));
-                  });
-                  totalResults += matchingIssues.length;
-                  issueCount += matchingIssues.length;
-                }
-              } catch (error) {
-                const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search issues in ${slug}: ${msg}`);
-                recordError(
-                  error instanceof Error ? error : new Error(msg),
-                  'getIssues',
-                  'search-tool',
-                  createApiErrorContext(`/repositories/${workspace}/${slug}/issues`, 'GET', { metadata: { workspace, repository: slug } })
-                );
-              }
-            }
-
-            // Coverage note
-            let coverageNote: string;
-            if (issueIterCount < repos.length) {
-              coverageNote = `_(Searched ${issueIterCount} of ${repos.length} retrieved repositories for issues — hit limit of ${limit}, more matches may exist)_`;
-            } else if (repoResult.next) {
-              coverageNote = `_(Searched all ${repos.length} retrieved repositories for issues — more available, refine query for complete results)_`;
-            } else {
-              coverageNote = `_(Searched all ${repos.length} repositories for issues)_`;
-            }
-            searchResults.push(coverageNote);
-          } catch (error) {
-            searchResults.push(`## 🐛 Issues - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        // Search commits
-        if (types.includes("commits")) {
-          try {
-            const repoResult = await getRepos();
-            const repos = repoResult.repositories;
-            let commitCount = 0;
-            let commitIterCount = 0;
-
-            for (const repo of repos) {
-              if (commitCount >= limit) break;
-              commitIterCount++;
-              const slug = getRepoSlug(repo);
-              try {
-                const commitResult = await bitbucketAPI.getCommits(workspace, slug, undefined, undefined, undefined);
-                const matchingCommits = commitResult.commits.filter(commit =>
-                  commit.message.toLowerCase().includes(query.toLowerCase())
-                ).slice(0, limit - commitCount);
-
-                if (matchingCommits.length > 0) {
-                  if (totalResults === 0 || !searchResults.some(r => r.includes("Commits"))) {
-                    searchResults.push(`## 💾 Commits (${matchingCommits.length} found in ${repo.name})`);
-                  }
-                  matchingCommits.forEach(commit => {
-                    searchResults.push([
-                      `**${commit.hash.substring(0, 8)}**: ${commit.message.split('\n')[0]} (${repo.name})`,
-                      `  Author: ${commit.author.user ? commit.author.user.display_name : commit.author.raw}`,
-                      `  Date: ${new Date(commit.date).toLocaleDateString()}`,
-                      `  URL: ${commit.links.html.href}`,
-                      ""
-                    ].join("\n"));
-                  });
-                  totalResults += matchingCommits.length;
-                  commitCount += matchingCommits.length;
-                }
-              } catch (error) {
-                const msg = error instanceof Error ? error.message : "Unknown error";
-                searchResults.push(`⚠️ Failed to search commits in ${slug}: ${msg}`);
-                recordError(
-                  error instanceof Error ? error : new Error(msg),
-                  'getCommits',
-                  'search-tool',
-                  createApiErrorContext(`/repositories/${workspace}/${slug}/commits`, 'GET', { metadata: { workspace, repository: slug } })
-                );
-              }
-            }
-
-            // Coverage note
-            let coverageNote: string;
-            if (commitIterCount < repos.length) {
-              coverageNote = `_(Searched ${commitIterCount} of ${repos.length} retrieved repositories for commits — hit limit of ${limit}, more matches may exist)_`;
-            } else if (repoResult.next) {
-              coverageNote = `_(Searched all ${repos.length} retrieved repositories for commits — more available, refine query for complete results)_`;
-            } else {
-              coverageNote = `_(Searched all ${repos.length} repositories for commits)_`;
-            }
-            searchResults.push(coverageNote);
-          } catch (error) {
-            searchResults.push(`## 💾 Commits - Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
-        }
-
-        if (totalResults === 0) {
-          // Even when no results found, surface any warnings, coverage notes, and errors collected
-          const additionalInfo = searchResults.filter(r => r.startsWith("⚠️") || r.includes(" - Error:") || r.includes("more available") || r.startsWith("_(Searched"));
-          const additionalInfoText = additionalInfo.length > 0 ? `\n\n${additionalInfo.join("\n")}` : "";
-          return {
-            content: [
-              {
-                type: "text",
-                text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.${additionalInfoText}`,
-              },
-            ],
-          };
-        }
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `# Search Results for "${query}" in '${workspace}'\n\nFound ${totalResults} total results:\n\n${searchResults.join("\n")}`,
-            },
-          ],
-        };
+        const result = await searchCore.search(bitbucketAPI, { workspace, query, types, limit });
+        return formatSearchResult(result, types, limit);
       } catch (error) {
         return {
           content: [
@@ -302,4 +36,166 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
       }
     }
   );
+}
+
+function buildCoverageNote(
+  section: SearchSectionMeta,
+  typeName: string,
+  limit: number,
+): string {
+  const { searched, totalRepos, hasMoreRepos } = section;
+  if (searched < totalRepos) {
+    return `_(Searched ${searched} of ${totalRepos} retrieved repositories for ${typeName} — hit limit of ${limit}, more matches may exist)_`;
+  } else if (hasMoreRepos) {
+    return `_(Searched all ${totalRepos} retrieved repositories for ${typeName} — more available, refine query for complete results)_`;
+  } else {
+    return `_(Searched all ${totalRepos} repositories for ${typeName})_`;
+  }
+}
+
+function formatSearchResult(
+  result: SearchResult,
+  types: string[],
+  limit: number,
+): { content: Array<{ type: string; text: string }> } {
+  const { workspace, query, hits, sections } = result;
+  const searchResults: string[] = [];
+  let totalResults = 0;
+
+  // Render repositories section
+  if (types.includes("repositories")) {
+    const section = sections.find((s) => s.type === "repositories");
+    if (section && section.errors.length > 0 && section.errors[0].repo === "(workspace)") {
+      searchResults.push(`## 📁 Repositories - Error: ${section.errors[0].message}`);
+    } else if (section) {
+      if (hits.repositories.length > 0) {
+        searchResults.push(`## 📁 Repositories (${hits.repositories.length} found)`);
+        hits.repositories.forEach(({ item: repo }) => {
+          searchResults.push([
+            `**${repo.name}** - ${repo.description || "No description"}`,
+            `  Language: ${repo.language || "Unknown"} | Private: ${repo.is_private ? "Yes" : "No"}`,
+            `  URL: ${repo.links.html.href}`,
+            ""
+          ].join("\n"));
+        });
+        totalResults += hits.repositories.length;
+      }
+      // Coverage note
+      searchResults.push(buildCoverageNote(section, "repositories", limit));
+    }
+  }
+
+  // Render pull-requests section
+  if (types.includes("pull-requests")) {
+    const section = sections.find((s) => s.type === "pull-requests");
+    if (section && section.errors.length === 1 && section.errors[0].repo === "(workspace)") {
+      searchResults.push(`## 🔀 Pull Requests - Error: ${section.errors[0].message}`);
+    } else if (section) {
+      // Per-repo errors
+      section.errors.forEach(({ repo, message }) => {
+        searchResults.push(`⚠️ Failed to search PRs in ${repo}: ${message}`);
+      });
+
+      if (hits.pullRequests.length > 0) {
+        // Group by repo for header (original tool used first found repo in header)
+        const firstRepo = hits.pullRequests[0].repo;
+        searchResults.push(`## 🔀 Pull Requests (${hits.pullRequests.length} found in ${firstRepo})`);
+        hits.pullRequests.forEach(({ item: pr, repo }) => {
+          searchResults.push([
+            `**PR #${pr.id}**: ${pr.title} (${repo})`,
+            `  State: ${pr.state} | Author: ${pr.author.display_name}`,
+            `  ${pr.source.branch.name} → ${pr.destination.branch.name}`,
+            `  URL: ${pr.links.html.href}`,
+            ""
+          ].join("\n"));
+        });
+        totalResults += hits.pullRequests.length;
+      }
+      // Coverage note
+      searchResults.push(buildCoverageNote(section, "PRs", limit));
+    }
+  }
+
+  // Render issues section
+  if (types.includes("issues")) {
+    const section = sections.find((s) => s.type === "issues");
+    if (section && section.errors.length === 1 && section.errors[0].repo === "(workspace)") {
+      searchResults.push(`## 🐛 Issues - Error: ${section.errors[0].message}`);
+    } else if (section) {
+      // Per-repo errors
+      section.errors.forEach(({ repo, message }) => {
+        searchResults.push(`⚠️ Failed to search issues in ${repo}: ${message}`);
+      });
+
+      if (hits.issues.length > 0) {
+        const firstRepo = hits.issues[0].repo;
+        searchResults.push(`## 🐛 Issues (${hits.issues.length} found in ${firstRepo})`);
+        hits.issues.forEach(({ item: issue, repo }) => {
+          searchResults.push([
+            `**Issue #${issue.id}**: ${issue.title} (${repo})`,
+            `  State: ${issue.state} | Kind: ${issue.kind} | Priority: ${issue.priority}`,
+            `  Reporter: ${issue.reporter.display_name}`,
+            `  URL: ${issue.links.html.href}`,
+            ""
+          ].join("\n"));
+        });
+        totalResults += hits.issues.length;
+      }
+      // Coverage note
+      searchResults.push(buildCoverageNote(section, "issues", limit));
+    }
+  }
+
+  // Render commits section
+  if (types.includes("commits")) {
+    const section = sections.find((s) => s.type === "commits");
+    if (section && section.errors.length === 1 && section.errors[0].repo === "(workspace)") {
+      searchResults.push(`## 💾 Commits - Error: ${section.errors[0].message}`);
+    } else if (section) {
+      // Per-repo errors
+      section.errors.forEach(({ repo, message }) => {
+        searchResults.push(`⚠️ Failed to search commits in ${repo}: ${message}`);
+      });
+
+      if (hits.commits.length > 0) {
+        const firstRepo = hits.commits[0].repo;
+        searchResults.push(`## 💾 Commits (${hits.commits.length} found in ${firstRepo})`);
+        hits.commits.forEach(({ item: commit, repo }) => {
+          searchResults.push([
+            `**${commit.hash.substring(0, 8)}**: ${commit.message.split('\n')[0]} (${repo})`,
+            `  Author: ${commit.author.user ? commit.author.user.display_name : commit.author.raw}`,
+            `  Date: ${new Date(commit.date).toLocaleDateString()}`,
+            `  URL: ${commit.links.html.href}`,
+            ""
+          ].join("\n"));
+        });
+        totalResults += hits.commits.length;
+      }
+      // Coverage note
+      searchResults.push(buildCoverageNote(section, "commits", limit));
+    }
+  }
+
+  if (totalResults === 0) {
+    // Even when no results found, surface any warnings, coverage notes, and errors collected
+    const additionalInfo = searchResults.filter(r => r.startsWith("⚠️") || r.includes(" - Error:") || r.includes("more available") || r.startsWith("_(Searched"));
+    const additionalInfoText = additionalInfo.length > 0 ? `\n\n${additionalInfo.join("\n")}` : "";
+    return {
+      content: [
+        {
+          type: "text",
+          text: `No results found for "${query}" in workspace '${workspace}' across the specified types: ${types.join(", ")}.${additionalInfoText}`,
+        },
+      ],
+    };
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `# Search Results for "${query}" in '${workspace}'\n\nFound ${totalResults} total results:\n\n${searchResults.join("\n")}`,
+      },
+    ],
+  };
 }

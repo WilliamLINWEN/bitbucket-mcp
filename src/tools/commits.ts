@@ -4,6 +4,7 @@ import { BitbucketAPI } from "../bitbucket-api.js";
 import { withRequestTracking } from "../utils/request-tracking.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as commitsCore from "../core/commits.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -22,22 +23,28 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     withRequestTracking("commits", async ({ workspace: ws, repo_slug, commit_hash, branch, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
       if (commit_hash) {
-        return getCommit(bitbucketAPI, workspace, repo_slug, commit_hash);
+        return formatGetCommit(bitbucketAPI, workspace, repo_slug, commit_hash);
       }
-      return listCommits(bitbucketAPI, workspace, repo_slug, { branch, page, pagelen });
+      return formatListCommits(bitbucketAPI, workspace, repo_slug, { branch, page, pagelen });
     }),
   );
 }
 
-async function listCommits(
+async function formatListCommits(
   api: BitbucketAPI,
   workspace: string,
   repo_slug: string,
   opts: { branch?: string; page?: string; pagelen?: number },
 ) {
   try {
-    const result = await api.getCommits(workspace, repo_slug, opts.branch, opts.page, opts.pagelen);
-    const commits = result.commits;
+    const result = await commitsCore.listCommits(api, {
+      workspace,
+      repo_slug,
+      branch: opts.branch,
+      page: opts.page,
+      pagelen: opts.pagelen,
+    });
+    const commits = result.items;
 
     if (commits.length === 0) {
       return {
@@ -85,14 +92,14 @@ async function listCommits(
   }
 }
 
-async function getCommit(
+async function formatGetCommit(
   api: BitbucketAPI,
   workspace: string,
   repo_slug: string,
   commit_hash: string,
 ) {
   try {
-    const commit = await api.getCommit(workspace, repo_slug, commit_hash);
+    const commit = await commitsCore.getCommit(api, { workspace, repo_slug, commit_hash });
     const parentHashes = commit.parents.map((p: { hash: string }) => p.hash.substring(0, 8)).join(", ") || "None";
     const author = commit.author.user
       ? `${commit.author.user.display_name} (@${commit.author.user.username})`

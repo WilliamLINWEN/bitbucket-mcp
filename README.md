@@ -46,6 +46,22 @@ npx -y bitbucket-mcp-server@latest
    npm start
    ```
 
+## CLI
+
+This package also ships a `bb` CLI alongside the MCP server. After installing globally:
+
+```bash
+npm install -g bitbucket-mcp-server
+bb --help
+```
+
+The CLI shares the same core logic as the MCP server, providing terminal access to repositories, pull requests, issues, pipelines, and more. See [`docs/cli.md`](docs/cli.md) for the full reference, including authentication, output formats, exit codes, and command-by-command examples.
+
+Quick example—list open PRs in JSON:
+```bash
+BITBUCKET_WORKSPACE=acme bb --json pr list -r api --state OPEN
+```
+
 ## Features
 
 This MCP server provides comprehensive tools for Bitbucket integration:
