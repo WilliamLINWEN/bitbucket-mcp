@@ -5,6 +5,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 export interface BranchCommandOptions {
   json: boolean;
@@ -21,7 +22,7 @@ export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const result = await branchesCore.listBranches(createApiClient(), {
         workspace: ws(),
         repo_slug: opts.repo,
@@ -33,7 +34,7 @@ export function buildBranchCommand(globalOpts: BranchCommandOptions): Command {
           `${b.name}\t${b.target.hash.substring(0, 8)}\t${b.links.html.href}`,
         ).join("\n") || "(no branches)",
       );
-    });
+    }));
 
   // Propagate exitOverride to subcommands
   const originalExitOverride = cmd.exitOverride.bind(cmd);

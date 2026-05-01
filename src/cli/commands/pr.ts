@@ -5,6 +5,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 export interface PrCommandOptions {
   json: boolean;
@@ -22,7 +23,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .option("--state <state>", "OPEN | MERGED | DECLINED | SUPERSEDED")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const result = await prCore.listPullRequests(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         state: opts.state, page: opts.page, pagelen: opts.pagelen,
@@ -32,12 +33,12 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
           `#${p.id}\t${p.state}\t${p.title}\t${p.links.html.href}`,
         ).join("\n") || "(no pull requests)",
       );
-    });
+    }));
 
   cmd.command("view <id>")
     .description("Show details for a single pull request")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (id: string, opts) => {
+    .action(action(async (id: string, opts) => {
       const pr_id = parseIntStrict(id, "pr id");
       const pr = await prCore.getPullRequest(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo, pr_id,
@@ -46,7 +47,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         [`#${pr.id} ${pr.title}`, `state: ${pr.state}`, `url: ${pr.links.html.href}`,
           pr.description ? `\n${pr.description}` : ""].join("\n"),
       );
-    });
+    }));
 
   cmd.command("create")
     .description("Create a pull request")
@@ -57,7 +58,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .option("--description <text>", "PR description (Markdown)")
     .option("--close-source-branch", "Close source branch on merge", false)
     .option("--reviewer <uuid...>", "Reviewer account UUIDs")
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const pr = await prCore.createPullRequest(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         title: opts.title, source_branch: opts.source,
@@ -65,14 +66,14 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         close_source_branch: opts.closeSourceBranch, reviewers: opts.reviewer,
       });
       emit(ctx(), pr, () => `created PR #${pr.id}: ${pr.links.html.href}`);
-    });
+    }));
 
   cmd.command("edit <id>")
     .description("Update PR title and/or description")
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("-t, --title <title>", "New title")
     .option("--description <text>", "New description")
-    .action(async (id: string, opts) => {
+    .action(action(async (id: string, opts) => {
       if (opts.title === undefined && opts.description === undefined) {
         throw new CliError("Provide --title and/or --description");
       }
@@ -82,18 +83,18 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         title: opts.title, description: opts.description,
       });
       emit(ctx(), pr, () => `updated PR #${pr.id}: ${pr.links.html.href}`);
-    });
+    }));
 
   cmd.command("diff <id>")
     .description("Print the unified diff for a pull request")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (id: string, opts) => {
+    .action(action(async (id: string, opts) => {
       const result = await prCore.getPullRequestDiff(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         pull_request_id: parseIntStrict(id, "pr id"),
       });
       emit(ctx(), result, () => result.diff);
-    });
+    }));
 
   const comment = cmd.command("comment").description("Pull request comment operations");
 
@@ -102,7 +103,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (id: string, opts) => {
+    .action(action(async (id: string, opts) => {
       const result = await prCommentsCore.listPrComments(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         pull_request_id: parseIntStrict(id, "pr id"),
@@ -113,7 +114,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
           `#${c.id}\t@${c.user.username}\t${c.content.raw.split("\n")[0].slice(0, 80)}`,
         ).join("\n") || "(no comments)",
       );
-    });
+    }));
 
   comment.command("create <id>")
     .description("Create a comment on a pull request (optionally inline or as a reply)")
@@ -123,7 +124,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .option("--file <path>", "Inline comment: file path")
     .option("--from <line>", "Inline comment: old-version line number", parseIntOpt)
     .option("--to <line>", "Inline comment: new-version line number", parseIntOpt)
-    .action(async (id: string, opts) => {
+    .action(action(async (id: string, opts) => {
       const inline = opts.file
         ? { path: opts.file as string, from: opts.from, to: opts.to }
         : undefined;
@@ -135,7 +136,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         inline,
       });
       emit(ctx(), c, () => `created comment #${c.id}: ${c.links.html.href}`);
-    });
+    }));
 
   // Propagate exitOverride to subcommands so tests can use cmd.exitOverride()
   // and have it apply to all nested commands (commander only copies _exitCallback

@@ -5,6 +5,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 export interface CommitCommandOptions {
   json: boolean;
@@ -22,7 +23,7 @@ export function buildCommitCommand(globalOpts: CommitCommandOptions): Command {
     .option("--branch <name>", "Branch name (defaults to main branch)")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const result = await commitsCore.listCommits(createApiClient(), {
         workspace: ws(),
         repo_slug: opts.repo,
@@ -35,12 +36,12 @@ export function buildCommitCommand(globalOpts: CommitCommandOptions): Command {
           `${c.hash.substring(0, 8)}\t${c.message.split("\n")[0].slice(0, 72)}\t${c.links.html.href}`,
         ).join("\n") || "(no commits)",
       );
-    });
+    }));
 
   cmd.command("view <hash>")
     .description("Show details for a single commit")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (hash: string, opts) => {
+    .action(action(async (hash: string, opts) => {
       const commit = await commitsCore.getCommit(createApiClient(), {
         workspace: ws(),
         repo_slug: opts.repo,
@@ -55,7 +56,7 @@ export function buildCommitCommand(globalOpts: CommitCommandOptions): Command {
         `date: ${new Date(commit.date).toISOString()}`,
         `url: ${commit.links.html.href}`,
       ].join("\n"));
-    });
+    }));
 
   // Propagate exitOverride to subcommands
   const originalExitOverride = cmd.exitOverride.bind(cmd);

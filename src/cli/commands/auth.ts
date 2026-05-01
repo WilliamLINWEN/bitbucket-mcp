@@ -2,6 +2,7 @@ import { Command } from "commander";
 import * as systemCore from "../../core/system.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
+import { action } from "../action.js";
 
 export interface AuthCommandOptions {
   json: boolean;
@@ -14,7 +15,7 @@ export function buildAuthCommand(globalOpts: AuthCommandOptions): Command {
 
   cmd.command("status")
     .description("Show authentication status and connectivity to Bitbucket")
-    .action(async () => {
+    .action(action(async () => {
       const result = await systemCore.authStatus(createApiClient(), {
         workspace: globalOpts.workspace,
       });
@@ -24,7 +25,7 @@ export function buildAuthCommand(globalOpts: AuthCommandOptions): Command {
         `reachable: ${result.reachable ? "yes" : "no"}`,
         result.error ? `error: ${result.error}` : "",
       ].filter(Boolean).join("\n"));
-    });
+    }));
 
   cmd.command("login")
     .description("Show how to authenticate (placeholder for future keychain support)")

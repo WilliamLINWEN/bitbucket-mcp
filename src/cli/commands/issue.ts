@@ -5,6 +5,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 export interface IssueCommandOptions {
   json: boolean;
@@ -23,7 +24,7 @@ export function buildIssueCommand(globalOpts: IssueCommandOptions): Command {
     .option("--kind <kind>", "Filter by issue kind (bug|enhancement|proposal|task)")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const result = await issuesCore.listIssues(createApiClient(), {
         workspace: ws(),
         repo_slug: opts.repo,
@@ -37,7 +38,7 @@ export function buildIssueCommand(globalOpts: IssueCommandOptions): Command {
           `#${i.id}\t${i.state}\t${i.kind}\t${i.title}\t${i.links.html.href}`,
         ).join("\n") || "(no issues)",
       );
-    });
+    }));
 
   // Propagate exitOverride to subcommands
   const originalExitOverride = cmd.exitOverride.bind(cmd);

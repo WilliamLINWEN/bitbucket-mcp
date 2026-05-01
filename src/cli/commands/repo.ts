@@ -4,6 +4,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { createApiClient } from "../api-client.js";
+import { action } from "../action.js";
 import type {
   ListRepositoriesResult,
   GetRepositoryResult,
@@ -24,7 +25,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
     .option("--sort <field>", "Sort by created_on|updated_on|name|size")
     .option("--page <page>", "Page number or opaque next page URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const workspace = resolveWorkspace(globalOpts.workspace);
       const api = createApiClient();
       const result = await repositoriesCore.listRepositories(api, {
@@ -35,12 +36,12 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
         pagelen: opts.pagelen,
       });
       emit(toCtx(globalOpts), result, () => formatList(workspace, result));
-    });
+    }));
 
   cmd
     .command("view <slug>")
     .description("Show details for a single repository")
-    .action(async (slug: string) => {
+    .action(action(async (slug: string) => {
       const workspace = resolveWorkspace(globalOpts.workspace);
       const api = createApiClient();
       const repo = await repositoriesCore.getRepository(api, {
@@ -48,7 +49,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
         repo_slug: slug,
       });
       emit(toCtx(globalOpts), repo, () => formatDetail(workspace, repo));
-    });
+    }));
 
   return cmd;
 }

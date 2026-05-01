@@ -4,6 +4,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 export interface PipelineCommandOptions {
   json: boolean;
@@ -20,7 +21,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       const result = await pipelinesCore.listPipelines(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         page: opts.page, pagelen: opts.pagelen,
@@ -30,12 +31,12 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
           `#${p.build_number}\t${p.state?.name ?? "unknown"}\t${p.uuid}`,
         ).join("\n") || "(no pipelines)",
       );
-    });
+    }));
 
   cmd.command("view <uuid>")
     .description("Show details for a single pipeline")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (uuid: string, opts) => {
+    .action(action(async (uuid: string, opts) => {
       const p = await pipelinesCore.getPipeline(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo, pipeline_uuid: uuid,
       });
@@ -44,7 +45,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         `state: ${p.state?.name ?? "unknown"}`,
         `url: ${p.links?.html?.href ?? "(none)"}`,
       ].join("\n"));
-    });
+    }));
 
   cmd.command("trigger")
     .description("Trigger a new pipeline")
@@ -55,7 +56,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .option("--selector-type <type>", "Selector type (e.g. custom)")
     .option("--selector-pattern <pattern>", "Selector pattern")
     .option("--var <key=value...>", "Pipeline variable (repeatable)")
-    .action(async (opts) => {
+    .action(action(async (opts) => {
       let ref_type: "branch" | "tag" | undefined;
       let ref_name: string | undefined;
       if (opts.branch) {
@@ -78,7 +79,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         variables,
       });
       emit(ctx(), p, () => `triggered pipeline #${p.build_number} (${p.uuid})`);
-    });
+    }));
 
   const step = cmd.command("step").description("Pipeline step operations");
 
@@ -87,7 +88,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .requiredOption("-r, --repo <slug>", "Repository slug")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parseIntOpt)
-    .action(async (pipelineUuid: string, opts) => {
+    .action(action(async (pipelineUuid: string, opts) => {
       const result = await pipelinesCore.listPipelineSteps(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo, pipeline_uuid: pipelineUuid,
         page: opts.page, pagelen: opts.pagelen,
@@ -97,12 +98,12 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
           `${s.uuid}\t${s.name ?? "unnamed"}\t${s.state?.name ?? "unknown"}`,
         ).join("\n") || "(no steps)",
       );
-    });
+    }));
 
   step.command("view <pipelineUuid> <stepUuid>")
     .description("Show details for a single pipeline step")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (pipelineUuid: string, stepUuid: string, opts) => {
+    .action(action(async (pipelineUuid: string, stepUuid: string, opts) => {
       const s = await pipelinesCore.getPipelineStep(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         pipeline_uuid: pipelineUuid, step_uuid: stepUuid,
@@ -112,18 +113,18 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         `state: ${s.state?.name ?? "unknown"}`,
         s.image ? `image: ${s.image.name}` : "",
       ].filter(Boolean).join("\n"));
-    });
+    }));
 
   step.command("log <pipelineUuid> <stepUuid>")
     .description("Print the log for a pipeline step")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(async (pipelineUuid: string, stepUuid: string, opts) => {
+    .action(action(async (pipelineUuid: string, stepUuid: string, opts) => {
       const result = await pipelinesCore.getPipelineStepLog(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,
         pipeline_uuid: pipelineUuid, step_uuid: stepUuid,
       });
       emit(ctx(), result, () => result.log);
-    });
+    }));
 
   return cmd;
 }

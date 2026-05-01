@@ -5,6 +5,7 @@ import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
+import { action } from "../action.js";
 
 const VALID_TYPES: SearchType[] = ["repositories", "pull-requests", "issues", "commits"];
 const DEFAULT_TYPES: SearchType[] = ["repositories", "pull-requests", "issues"];
@@ -27,7 +28,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
       DEFAULT_TYPES,
     )
     .option("--limit <n>", "Max results per type (1-50)", parseIntOpt, 10)
-    .action(async (query: string, opts) => {
+    .action(action(async (query: string, opts) => {
       const result = await searchCore.search(createApiClient(), {
         workspace: ws(),
         query,
@@ -87,7 +88,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
 
         return lines.join("\n");
       });
-    });
+    }));
 
   return cmd;
 }
