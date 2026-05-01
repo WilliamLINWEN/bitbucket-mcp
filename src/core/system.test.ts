@@ -82,6 +82,20 @@ describe("core authStatus", () => {
     expect(result.workspaceTested).toBe("my-org");
   });
 
+  it("returns authMethod:basic when username+apiToken are both set (matches actual Basic header sent)", async () => {
+    process.env.BITBUCKET_USERNAME = "alice";
+    process.env.BITBUCKET_API_TOKEN = "tok";
+    vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
+      items: [],
+      hasMore: false,
+    });
+
+    const result = await authStatus(fakeApi, { workspace: "acme" });
+
+    expect(result.authMethod).toBe("basic");
+    expect(result.authenticated).toBe(true);
+  });
+
   it("defaults workspaceTested to 'atlassian' when neither workspace input nor env var provided", async () => {
     vi.spyOn(repositoriesCore, "listRepositories").mockResolvedValue({
       items: [],

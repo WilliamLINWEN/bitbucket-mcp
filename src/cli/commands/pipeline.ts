@@ -5,6 +5,7 @@ import { createApiClient } from "../api-client.js";
 import { emit, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
+import { propagateExitOverride } from "../utils.js";
 
 export interface PipelineCommandOptions {
   json: boolean;
@@ -126,6 +127,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
       emit(ctx(), result, () => result.log);
     }));
 
+  propagateExitOverride(cmd);
   return cmd;
 }
 

@@ -3,8 +3,18 @@ import * as repositoriesCore from "./repositories.js";
 import type { AuthStatusInput, AuthStatusResult } from "./types.js";
 
 function detectAuthMethod(): "token" | "basic" | "none" {
-  if (process.env.BITBUCKET_API_TOKEN) return "token";
-  if (process.env.BITBUCKET_USERNAME && process.env.BITBUCKET_APP_PASSWORD) return "basic";
+  // Mirror the BitbucketAPI auth-header precedence (see src/core/auth.ts buildHeader):
+  //   1. username + apiToken      → Basic ("basic")
+  //   2. apiToken alone           → Bearer ("token")
+  //   3. username + appPassword   → Basic ("basic")
+  //   4. otherwise                → "none"
+  // Keeps the reported method consistent with the Authorization header actually sent.
+  const username = process.env.BITBUCKET_USERNAME;
+  const apiToken = process.env.BITBUCKET_API_TOKEN;
+  const appPassword = process.env.BITBUCKET_APP_PASSWORD;
+  if (username && apiToken) return "basic";
+  if (apiToken) return "token";
+  if (username && appPassword) return "basic";
   return "none";
 }
 
