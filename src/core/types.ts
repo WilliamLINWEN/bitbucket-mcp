@@ -53,6 +53,14 @@ export interface GetPullRequestInput {
 }
 export type GetPullRequestResult = PullRequest;
 
+export interface ListBranchesInput {
+  workspace: string;
+  repo_slug: string;
+  page?: string;
+  pagelen?: number;
+}
+export type ListBranchesResult = PaginatedResult<Branch>;
+
 export interface ListCommitsInput {
   workspace: string;
   repo_slug: string;

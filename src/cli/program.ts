@@ -3,6 +3,7 @@ import { buildRepoCommand } from "./commands/repo.js";
 import { buildPrCommand } from "./commands/pr.js";
 import { buildPipelineCommand } from "./commands/pipeline.js";
 import { buildCommitCommand } from "./commands/commit.js";
+import { buildBranchCommand } from "./commands/branch.js";
 
 export interface BbGlobals {
   readonly json: boolean;
@@ -31,6 +32,7 @@ export function buildProgram(): Command {
   program.addCommand(buildPrCommand(globals));
   program.addCommand(buildPipelineCommand(globals));
   program.addCommand(buildCommitCommand(globals));
+  program.addCommand(buildBranchCommand(globals));
 
   return program;
 }

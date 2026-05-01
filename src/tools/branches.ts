@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BitbucketAPI } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as branchesCore from "../core/branches.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -20,8 +21,13 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace: ws, repo_slug, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        const result = await bitbucketAPI.getBranches(workspace, repo_slug, page, pagelen);
-        const branches = result.branches;
+        const result = await branchesCore.listBranches(bitbucketAPI, {
+          workspace,
+          repo_slug,
+          page,
+          pagelen,
+        });
+        const branches = result.items;
 
         if (branches.length === 0) {
           return {
