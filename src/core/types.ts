@@ -5,6 +5,8 @@ import type {
   Branch,
   Commit,
   Comment,
+  Pipeline,
+  PipelineStep,
 } from "../bitbucket-api.js";
 
 export interface PaginatedResult<T> {
@@ -108,3 +110,55 @@ export interface CreatePrCommentInput {
   inline?: { path: string; from?: number; to?: number };
 }
 export type CreatePrCommentResult = Comment;
+
+export interface ListPipelinesInput {
+  workspace: string;
+  repo_slug: string;
+  page?: string;
+  pagelen?: number;
+}
+export type ListPipelinesResult = PaginatedResult<Pipeline>;
+
+export interface GetPipelineInput {
+  workspace: string;
+  repo_slug: string;
+  pipeline_uuid: string;
+}
+export type GetPipelineResult = Pipeline;
+
+export interface TriggerPipelineInput {
+  workspace: string;
+  repo_slug: string;
+  ref_type?: "branch" | "tag";
+  ref_name?: string;
+  commit_hash?: string;
+  selector_type?: string;
+  selector_pattern?: string;
+  variables?: Array<{ key: string; value: string }>;
+}
+export type TriggerPipelineResult = Pipeline;
+
+export interface ListPipelineStepsInput {
+  workspace: string;
+  repo_slug: string;
+  pipeline_uuid: string;
+  page?: string;
+  pagelen?: number;
+}
+export type ListPipelineStepsResult = PaginatedResult<PipelineStep>;
+
+export interface GetPipelineStepInput {
+  workspace: string;
+  repo_slug: string;
+  pipeline_uuid: string;
+  step_uuid: string;
+}
+export type GetPipelineStepResult = PipelineStep;
+
+export interface GetPipelineStepLogInput {
+  workspace: string;
+  repo_slug: string;
+  pipeline_uuid: string;
+  step_uuid: string;
+}
+export type GetPipelineStepLogResult = { log: string };

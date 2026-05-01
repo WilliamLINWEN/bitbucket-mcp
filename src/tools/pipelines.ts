@@ -5,6 +5,7 @@ import { withRequestTracking } from "../utils/request-tracking.js";
 import { resolveWorkspace } from "../validation.js";
 import logger from "../debug-logger.js";
 import { makeRegister } from "./helpers.js";
+import * as pipelinesCore from "../core/pipelines.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -74,8 +75,8 @@ async function listPipelines(
   pagelen?: number,
 ) {
   try {
-    const result = await api.listPipelines(workspace, repo_slug, page, pagelen);
-    const pipelines = result.pipelines;
+    const result = await pipelinesCore.listPipelines(api, { workspace, repo_slug, page, pagelen });
+    const pipelines = result.items;
 
     if (pipelines.length === 0) {
       return {
@@ -137,7 +138,7 @@ async function getPipeline(
   pipeline_uuid: string,
 ) {
   try {
-    const pipeline = await api.getPipeline(workspace, repo_slug, pipeline_uuid);
+    const pipeline = await pipelinesCore.getPipeline(api, { workspace, repo_slug, pipeline_uuid });
 
     const info = [
       `**Pipeline #${pipeline.build_number}** (${pipeline.uuid})`,
@@ -232,7 +233,9 @@ function registerTriggerPipeline(registerTool: ReturnType<typeof makeRegister>, 
           ? Object.entries(variables).map(([key, value]) => ({ key, value: String(value) }))
           : undefined;
 
-        const pipeline = await api.triggerPipeline(workspace, repo_slug, {
+        const pipeline = await pipelinesCore.triggerPipeline(api, {
+          workspace,
+          repo_slug,
           ref_type: ref_type as 'branch' | 'tag',
           ref_name,
           commit_hash,
@@ -286,8 +289,8 @@ async function listPipelineSteps(
   pagelen?: number,
 ) {
   try {
-    const result = await api.listPipelineSteps(workspace, repo_slug, pipeline_uuid, page, pagelen);
-    const steps = result.steps;
+    const result = await pipelinesCore.listPipelineSteps(api, { workspace, repo_slug, pipeline_uuid, page, pagelen });
+    const steps = result.items;
 
     if (steps.length === 0) {
       return {
@@ -343,7 +346,7 @@ async function getPipelineStep(
   step_uuid: string,
 ) {
   try {
-    const step = await api.getPipelineStep(workspace, repo_slug, pipeline_uuid, step_uuid);
+    const step = await pipelinesCore.getPipelineStep(api, { workspace, repo_slug, pipeline_uuid, step_uuid });
 
     const info = [
       `**Step: ${step.name || "unnamed"}** (${step.uuid})`,
@@ -395,7 +398,8 @@ async function getPipelineStepLog(
   step_uuid: string,
 ) {
   try {
-    let log = await api.getPipelineStepLog(workspace, repo_slug, pipeline_uuid, step_uuid);
+    const rawResult = await pipelinesCore.getPipelineStepLog(api, { workspace, repo_slug, pipeline_uuid, step_uuid });
+    let log = rawResult.log;
 
     const MAX_LOG_SIZE = 100 * 1024; // 100KB
     let truncated = false;
