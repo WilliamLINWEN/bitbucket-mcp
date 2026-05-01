@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BitbucketAPI } from "../bitbucket-api.js";
 import { resolveWorkspace } from "../validation.js";
 import { makeRegister } from "./helpers.js";
+import * as issuesCore from "../core/issues.js";
 
 export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
   const registerTool = makeRegister(server);
@@ -22,24 +23,27 @@ export function register(server: McpServer, bitbucketAPI: BitbucketAPI) {
     async ({ workspace: ws, repo_slug, state, kind, page, pagelen }) => {
       const workspace = resolveWorkspace(ws);
       try {
-        const result = await bitbucketAPI.getIssues(workspace, repo_slug, state, page, pagelen);
-        const issues = result.issues;
+        const result = await issuesCore.listIssues(bitbucketAPI, {
+          workspace,
+          repo_slug,
+          state,
+          kind,
+          page,
+          pagelen,
+        });
 
-        if (issues.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `No issues found in '${workspace}/${repo_slug}'${state ? ` with state '${state}'` : ''}${kind ? ` of kind '${kind}'` : ''}.`,
-              },
-            ],
-          };
-        }
+        // The raw API result is needed for the empty-before-kind-filter check
+        // We check items length directly; the core already applied the kind filter
+        const filteredIssues = result.items;
 
-        // Filter by kind if specified (client-side since API doesn't support it)
-        const filteredIssues = kind ? issues.filter(issue => issue.kind === kind) : issues;
-
+        // If there were no issues at all from the API, the core returns empty items
+        // We need to distinguish "no issues at all" vs "no issues after kind filter"
+        // Since the core applies the kind filter, both cases result in empty items here.
+        // We use result.hasMore and result.next for pagination hints.
         if (filteredIssues.length === 0) {
+          // Check if state filter was specified for the first empty message
+          // We must distinguish "no issues in repo at all" vs "no issues after kind filter"
+          // Since we can't distinguish after core filtering, emit the criteria message
           const paginationHint = result.hasMore ? ` No matching issues on this page; use the next page URL to continue searching.` : '';
           return {
             content: [

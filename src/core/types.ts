@@ -53,6 +53,16 @@ export interface GetPullRequestInput {
 }
 export type GetPullRequestResult = PullRequest;
 
+export interface ListIssuesInput {
+  workspace: string;
+  repo_slug: string;
+  state?: "new" | "open" | "resolved" | "on hold" | "invalid" | "duplicate" | "wontfix" | "closed";
+  kind?: "bug" | "enhancement" | "proposal" | "task";
+  page?: string;
+  pagelen?: number;
+}
+export type ListIssuesResult = PaginatedResult<Issue>;
+
 export interface ListBranchesInput {
   workspace: string;
   repo_slug: string;
