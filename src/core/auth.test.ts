@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   EnvAuthProvider,
   StaticAuthProvider,
+  hasAnyEnvCred,
   type AuthProvider,
 } from "./auth.js";
 
@@ -83,5 +84,37 @@ describe("EnvAuthProvider — reads env at call time, matches existing precedenc
     clearAuthEnv();
     const p = new EnvAuthProvider();
     expect(await p.getAuthHeader()).toBeNull();
+  });
+});
+
+describe("hasAnyEnvCred — env precedence predicate", () => {
+  it("returns false when no auth env vars are set", () => {
+    clearAuthEnv();
+    expect(hasAnyEnvCred()).toBe(false);
+  });
+
+  it("returns true when only BITBUCKET_API_TOKEN is set", () => {
+    clearAuthEnv();
+    process.env.BITBUCKET_API_TOKEN = "tok";
+    expect(hasAnyEnvCred()).toBe(true);
+  });
+
+  it("returns true when BITBUCKET_USERNAME + BITBUCKET_APP_PASSWORD are both set", () => {
+    clearAuthEnv();
+    process.env.BITBUCKET_USERNAME = "alice";
+    process.env.BITBUCKET_APP_PASSWORD = "pw";
+    expect(hasAnyEnvCred()).toBe(true);
+  });
+
+  it("returns false when only BITBUCKET_USERNAME is set (no token, no password)", () => {
+    clearAuthEnv();
+    process.env.BITBUCKET_USERNAME = "alice";
+    expect(hasAnyEnvCred()).toBe(false);
+  });
+
+  it("returns false when only BITBUCKET_APP_PASSWORD is set (no username)", () => {
+    clearAuthEnv();
+    process.env.BITBUCKET_APP_PASSWORD = "pw";
+    expect(hasAnyEnvCred()).toBe(false);
   });
 });
