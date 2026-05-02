@@ -123,7 +123,7 @@ describe("cli pipeline command", () => {
       const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
       expect(out).toContain("line10");
       expect(out).not.toContain("line11");
-      expect(out).toContain("(truncated: 590 earlier lines");
+      expect(out).toContain("(truncated: 590 later lines — re-run with --head 0 for full log)");
     });
 
     it("--tail 5 --head 5 throws CliError (mutually exclusive)", async () => {

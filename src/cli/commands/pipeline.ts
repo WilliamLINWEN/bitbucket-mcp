@@ -139,7 +139,9 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     });
     const { log: shown, truncatedLines } = applyTailHead(result.log, tail, head);
     const notice = truncatedLines > 0
-      ? `\n(truncated: ${truncatedLines} earlier lines — re-run with --tail 0 for full log)`
+      ? userPassedHead
+        ? `\n(truncated: ${truncatedLines} later lines — re-run with --head 0 for full log)`
+        : `\n(truncated: ${truncatedLines} earlier lines — re-run with --tail 0 for full log)`
       : "";
     emit(ctx(), { ...result, log: shown, truncatedLines }, () => shown + notice);
   }));
