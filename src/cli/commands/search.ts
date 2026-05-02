@@ -44,6 +44,8 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
         // Report section summaries
         for (const section of sections) {
           lines.push(`${section.type}: ${countHits(hits, section.type)} hits`);
+          const moreSuffix = section.hasMoreRepos ? " (more available)" : "";
+          lines.push(`  searched ${section.searched} of ${section.totalRepos} repos${moreSuffix}`);
           if (section.errors.length > 0) {
             for (const { repo, message } of section.errors) {
               lines.push(`  ! ${repo}: ${message}`);
@@ -54,7 +56,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
         // Print first few items per type
         if (hits.repositories.length > 0) {
           lines.push("");
-          lines.push("Repositories:");
+          lines.push(listHeader("Repositories", hits.repositories.length));
           hits.repositories.slice(0, 5).forEach(({ item: repo }) => {
             lines.push(`  ${repo.name} — ${repo.description || "(no description)"}`);
           });
@@ -62,7 +64,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
 
         if (hits.pullRequests.length > 0) {
           lines.push("");
-          lines.push("Pull Requests:");
+          lines.push(listHeader("Pull Requests", hits.pullRequests.length));
           hits.pullRequests.slice(0, 5).forEach(({ item: pr, repo }) => {
             lines.push(`  [${repo}] PR #${pr.id}: ${pr.title} (${pr.state})`);
           });
@@ -70,7 +72,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
 
         if (hits.issues.length > 0) {
           lines.push("");
-          lines.push("Issues:");
+          lines.push(listHeader("Issues", hits.issues.length));
           hits.issues.slice(0, 5).forEach(({ item: issue, repo }) => {
             lines.push(`  [${repo}] #${issue.id}: ${issue.title} (${issue.state})`);
           });
@@ -78,7 +80,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
 
         if (hits.commits.length > 0) {
           lines.push("");
-          lines.push("Commits:");
+          lines.push(listHeader("Commits", hits.commits.length));
           hits.commits.slice(0, 5).forEach(({ item: commit, repo }) => {
             lines.push(`  [${repo}] ${commit.hash.substring(0, 8)}: ${commit.message.split("\n")[0].slice(0, 60)}`);
           });
@@ -93,6 +95,11 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
     }));
 
   return cmd;
+}
+
+function listHeader(label: string, total: number): string {
+  const shown = Math.min(5, total);
+  return shown < total ? `${label} (showing ${shown} of ${total}):` : `${label}:`;
 }
 
 function countHits(
