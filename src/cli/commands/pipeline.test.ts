@@ -90,4 +90,79 @@ describe("cli pipeline command", () => {
     const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
     expect(out).toContain("abc");
   });
+
+  describe("`pipeline step log` tail/head", () => {
+    function makeLog(n: number): string {
+      return Array.from({ length: n }, (_, i) => `line${i + 1}`).join("\n");
+    }
+
+    it("default behavior: 600-line log → last 500 lines + truncation notice", async () => {
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: makeLog(600) });
+      const cmd = buildPipelineCommand({ json: false, pretty: false });
+      await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1"], { from: "user" });
+      const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(out).toContain("line101");   // first line of last 500
+      expect(out).not.toContain("line100"); // truncated
+      expect(out).toContain("(truncated: 100 earlier lines");
+    });
+
+    it("--tail 0: 600-line log → full 600 lines, no notice", async () => {
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: makeLog(600) });
+      const cmd = buildPipelineCommand({ json: false, pretty: false });
+      await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1", "--tail", "0"], { from: "user" });
+      const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(out).toContain("line1");
+      expect(out).toContain("line600");
+      expect(out).not.toContain("truncated");
+    });
+
+    it("--head 10: 600-line log → first 10 lines + truncation notice", async () => {
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: makeLog(600) });
+      const cmd = buildPipelineCommand({ json: false, pretty: false });
+      await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1", "--head", "10"], { from: "user" });
+      const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(out).toContain("line10");
+      expect(out).not.toContain("line11");
+      expect(out).toContain("(truncated: 590 earlier lines");
+    });
+
+    it("--tail 5 --head 5 throws CliError (mutually exclusive)", async () => {
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: makeLog(600) });
+      const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
+        throw new Error(`__exit:${code ?? 0}`);
+      }) as any;
+      const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+      try {
+        const cmd = buildPipelineCommand({ json: false, pretty: false });
+        cmd.exitOverride();
+        await expect(
+          cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1", "--tail", "5", "--head", "5"], { from: "user" }),
+        ).rejects.toThrow(/__exit/);
+        const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+        expect(stderr).toMatch(/--tail.*--head.*mutually exclusive/);
+      } finally {
+        exitSpy.mockRestore();
+        stderrSpy.mockRestore();
+      }
+    });
+
+    it("JSON mode includes truncatedLines: 100 for 600-line log with default tail", async () => {
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: makeLog(600) });
+      const cmd = buildPipelineCommand({ json: true, pretty: false });
+      await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1"], { from: "user" });
+      const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      const parsed = JSON.parse(out);
+      expect(parsed.truncatedLines).toBe(100);
+    });
+
+    it("trailing newline edge: 500-line log ending in \\n → no truncation", async () => {
+      const log500 = makeLog(500) + "\n"; // exactly 500 lines with trailing newline
+      vi.spyOn(pipelinesCore, "getPipelineStepLog").mockResolvedValue({ log: log500 });
+      const cmd = buildPipelineCommand({ json: true, pretty: false });
+      await cmd.parseAsync(["step", "log", "p1", "s1", "-r", "r1"], { from: "user" });
+      const out = stdoutSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      const parsed = JSON.parse(out);
+      expect(parsed.truncatedLines).toBe(0);
+    });
+  });
 });
