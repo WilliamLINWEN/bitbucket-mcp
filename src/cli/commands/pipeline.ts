@@ -59,8 +59,11 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
     .option("--selector-pattern <pattern>", "Selector pattern")
     .option("--var <key=value...>", "Pipeline variable (repeatable)")
     .action(action(async (opts) => {
-      if (opts.branch && opts.tag) {
-        throw new CliError("Provide only one of --branch or --tag");
+      const refsProvided = [opts.branch, opts.tag, opts.commit].filter(Boolean).length;
+      if (refsProvided !== 1) {
+        throw new CliError(
+          "Provide exactly one of --branch, --tag, or --commit (mutually exclusive)",
+        );
       }
       let ref_type: "branch" | "tag" | undefined;
       let ref_name: string | undefined;
@@ -70,9 +73,6 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
       } else if (opts.tag) {
         ref_type = "tag";
         ref_name = opts.tag;
-      }
-      if (!ref_name && !opts.commit) {
-        throw new CliError("Provide --branch, --tag, or --commit");
       }
       const variables = parseVariables(opts.var);
       const p = await pipelinesCore.triggerPipeline(createApiClient(), {

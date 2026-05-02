@@ -46,12 +46,25 @@ describe("cli pipeline command", () => {
     }));
   });
 
-  it("`pipeline trigger -r r1` without ref/commit throws", async () => {
-    const cmd = buildPipelineCommand({ json: true, pretty: false });
-    cmd.exitOverride();
-    await expect(
-      cmd.parseAsync(["trigger", "-r", "r1"], { from: "user" }),
-    ).rejects.toThrow();
+  it("`pipeline trigger -r r1` without ref/commit throws with mutual-exclusion hint", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
+      throw new Error(`__exit:${code ?? 0}`);
+    }) as any;
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const cmd = buildPipelineCommand({ json: true, pretty: false });
+      cmd.exitOverride();
+      await expect(
+        cmd.parseAsync(["trigger", "-r", "r1"], { from: "user" }),
+      ).rejects.toThrow(/__exit/);
+      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(stderr).toContain(
+        "Provide exactly one of --branch, --tag, or --commit (mutually exclusive)",
+      );
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
   });
 
   it("`pipeline trigger -r r1 --branch main --tag v1` rejects conflicting refs", async () => {
@@ -66,7 +79,30 @@ describe("cli pipeline command", () => {
         cmd.parseAsync(["trigger", "-r", "r1", "--branch", "main", "--tag", "v1"], { from: "user" }),
       ).rejects.toThrow(/__exit/);
       const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
-      expect(stderr).toMatch(/--branch.*--tag|only one/i);
+      expect(stderr).toContain(
+        "Provide exactly one of --branch, --tag, or --commit (mutually exclusive)",
+      );
+    } finally {
+      exitSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it("`pipeline trigger -r r1 --branch main --commit abc` rejects conflicting refs", async () => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
+      throw new Error(`__exit:${code ?? 0}`);
+    }) as any;
+    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    try {
+      const cmd = buildPipelineCommand({ json: true, pretty: false });
+      cmd.exitOverride();
+      await expect(
+        cmd.parseAsync(["trigger", "-r", "r1", "--branch", "main", "--commit", "abc"], { from: "user" }),
+      ).rejects.toThrow(/__exit/);
+      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
+      expect(stderr).toContain(
+        "Provide exactly one of --branch, --tag, or --commit (mutually exclusive)",
+      );
     } finally {
       exitSpy.mockRestore();
       stderrSpy.mockRestore();
