@@ -22,7 +22,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
   cmd.command("list")
     .description("List pull requests in a repository")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .option("--state <state>", "OPEN | MERGED | DECLINED | SUPERSEDED")
+    .option("--state <state>", "Filter by state (one of: OPEN, MERGED, DECLINED, SUPERSEDED)")
     .option("--page <page>", "Page number or opaque next URL")
     .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {
