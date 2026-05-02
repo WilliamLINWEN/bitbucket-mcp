@@ -2,7 +2,7 @@ import { Command } from "commander";
 import * as pipelinesCore from "../../core/pipelines.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
-import { emit, OutputContext } from "../format.js";
+import { emit, emitPaginated, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
 import { propagateExitOverride, parsePagelenOpt } from "../utils.js";
@@ -28,7 +28,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         workspace: ws(), repo_slug: opts.repo,
         page: opts.page, pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
+      emitPaginated(ctx(), result, () =>
         result.items.map((p) =>
           `#${p.build_number}\t${p.state?.name ?? "unknown"}\t${p.uuid}`,
         ).join("\n") || "(no pipelines)",
@@ -98,7 +98,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         workspace: ws(), repo_slug: opts.repo, pipeline_uuid: pipelineUuid,
         page: opts.page, pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
+      emitPaginated(ctx(), result, () =>
         result.items.map((s) =>
           `${s.uuid}\t${s.name ?? "unnamed"}\t${s.state?.name ?? "unknown"}`,
         ).join("\n") || "(no steps)",

@@ -3,7 +3,7 @@ import * as prCore from "../../core/pull-requests.js";
 import * as prCommentsCore from "../../core/pr-comments.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
-import { emit, OutputContext } from "../format.js";
+import { emit, emitPaginated, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
 import { parseIntOpt, parseIntStrict, parsePagelenOpt, propagateExitOverride } from "../utils.js";
@@ -36,7 +36,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         workspace: ws(), repo_slug: opts.repo,
         state: opts.state, page: opts.page, pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
+      emitPaginated(ctx(), result, () =>
         result.items.map((p) =>
           `#${p.id}\t${p.state}\t${p.title}\t${p.links.html.href}`,
         ).join("\n") || "(no pull requests)",
@@ -117,7 +117,7 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
         pull_request_id: parseIntStrict(id, "pr id"),
         page: opts.page, pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
+      emitPaginated(ctx(), result, () =>
         result.items.map((c) =>
           `#${c.id}\t@${c.user.username}\t${c.content.raw.split("\n")[0].slice(0, 80)}`,
         ).join("\n") || "(no comments)",

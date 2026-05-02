@@ -66,6 +66,19 @@ describe("cli pr command", () => {
     });
   });
 
+  it("`pr list` in text mode appends next-page hint when result.next is set", async () => {
+    const nextUrl = "https://api.bitbucket.org/2.0/example/pullrequests?page=xyz";
+    vi.spyOn(prCore, "listPullRequests").mockResolvedValue({
+      items: [{ id: 1, state: "OPEN", title: "My PR", links: { html: { href: "https://bitbucket.org/acme/r1/pull-requests/1" } } } as any],
+      hasMore: true,
+      next: nextUrl,
+    });
+    const cmd = buildPrCommand({ json: false, pretty: false });
+    await cmd.parseAsync(["list", "-r", "r1"], { from: "user" });
+    const written = (stdoutSpy.mock.calls as [string][]).map(([s]) => s).join("");
+    expect(written).toContain(`next page: --page '${nextUrl}'`);
+  });
+
   it("`pr comment create 7 -r r1 -m hi --file src/foo.ts --to 10` builds inline options", async () => {
     const prCommentsCore = await import("../../core/pr-comments.js");
     vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
