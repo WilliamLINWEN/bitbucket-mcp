@@ -13,6 +13,14 @@ describe('BitbucketAPI', () => {
   let api: BitbucketAPI;
 
   beforeEach(() => {
+    // These tests construct BitbucketAPI with explicit positional args (or no args)
+    // and assert on the resulting auth header. Env vars must be cleared so they
+    // don't leak into the legacy constructor's auth-header derivation. The
+    // global test-setup at src/test-setup.ts sets BITBUCKET_API_TOKEN by default
+    // for CLI command tests; this file opts out.
+    delete process.env.BITBUCKET_API_TOKEN;
+    delete process.env.BITBUCKET_USERNAME;
+    delete process.env.BITBUCKET_APP_PASSWORD;
     // Mock console.error to avoid noise in tests before creating the API instance
     vi.spyOn(console, 'error').mockImplementation(() => { });
     api = new BitbucketAPI();

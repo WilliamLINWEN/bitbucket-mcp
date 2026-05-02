@@ -22,8 +22,8 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
   cmd
     .command("list")
     .description("List repositories in a workspace")
-    .option("--role <role>", "Filter by user role (owner|admin|contributor|member)")
-    .option("--sort <field>", "Sort by created_on|updated_on|name|size")
+    .option("--role <role>", "Filter by user role (one of: owner, admin, contributor, member)")
+    .option("--sort <field>", "Sort by field (one of: created_on, updated_on, name, size)")
     .option("--page <page>", "Page number or opaque next page URL")
     .option("--pagelen <n>", "Items per page (10-100)", parsePagelenOpt)
     .action(action(async (opts) => {

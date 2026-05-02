@@ -17,7 +17,7 @@ export function buildAuthCommand(globalOpts: AuthCommandOptions): Command {
   cmd.command("status")
     .description("Show authentication status and connectivity to Bitbucket")
     .action(action(async () => {
-      const result = await systemCore.authStatus(createApiClient(), {
+      const result = await systemCore.authStatus(createApiClient({ allowMissingCreds: true }), {
         workspace: globalOpts.workspace,
       });
       emit(ctx(), result, () => [

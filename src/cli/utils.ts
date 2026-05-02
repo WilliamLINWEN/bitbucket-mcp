@@ -42,6 +42,14 @@ export function parseIntStrict(value: string, label: string): number {
   return n;
 }
 
+/** Parse a non-negative integer; allows 0 (used for sentinel "unlimited" semantics in --tail/--head etc.). */
+export function parseNonNegativeIntOpt(value: string): number {
+  if (!/^\d+$/.test(value)) {
+    throw new CliError(`expected non-negative integer (e.g., '0' or '500'), got: '${value}'`);
+  }
+  return Number.parseInt(value, 10);
+}
+
 /** Parse a pagelen value, throwing CliError if outside Bitbucket's documented 10-100 range. */
 export function parsePagelenOpt(value: string): number {
   const n = parseIntOpt(value);

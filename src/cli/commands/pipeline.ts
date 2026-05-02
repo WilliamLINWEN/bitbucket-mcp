@@ -5,7 +5,7 @@ import { createApiClient } from "../api-client.js";
 import { emit, emitPaginated, OutputContext } from "../format.js";
 import { CliError } from "../errors.js";
 import { action } from "../action.js";
-import { propagateExitOverride, parsePagelenOpt } from "../utils.js";
+import { propagateExitOverride, parsePagelenOpt, parseNonNegativeIntOpt } from "../utils.js";
 
 export interface PipelineCommandOptions {
   json: boolean;
@@ -120,19 +120,48 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
       ].filter(Boolean).join("\n"));
     }));
 
-  step.command("log <pipelineUuid> <stepUuid>")
-    .description("Print the log for a pipeline step")
+  const logCmd = step.command("log <pipelineUuid> <stepUuid>")
+    .description("Print the log for a pipeline step (default: last 500 lines; --tail 0 = unlimited)")
     .requiredOption("-r, --repo <slug>", "Repository slug")
-    .action(action(async (pipelineUuid: string, stepUuid: string, opts) => {
-      const result = await pipelinesCore.getPipelineStepLog(createApiClient(), {
-        workspace: ws(), repo_slug: opts.repo,
-        pipeline_uuid: pipelineUuid, step_uuid: stepUuid,
-      });
-      emit(ctx(), result, () => result.log);
-    }));
+    .option("--tail <n>", "Print only the last N lines (0 = unlimited; default 500)", parseNonNegativeIntOpt)
+    .option("--head <n>", "Print only the first N lines (0 = unlimited)", parseNonNegativeIntOpt);
+  logCmd.action(action(async (pipelineUuid: string, stepUuid: string, opts) => {
+    const userPassedTail = logCmd.getOptionValueSource("tail") === "cli";
+    const userPassedHead = logCmd.getOptionValueSource("head") === "cli";
+    if (userPassedTail && userPassedHead) {
+      throw new CliError("--tail and --head are mutually exclusive");
+    }
+    const tail = userPassedHead ? undefined : (opts.tail ?? 500);
+    const head = userPassedHead ? opts.head : undefined;
+    const result = await pipelinesCore.getPipelineStepLog(createApiClient(), {
+      workspace: ws(), repo_slug: opts.repo,
+      pipeline_uuid: pipelineUuid, step_uuid: stepUuid,
+    });
+    const { log: shown, truncatedLines } = applyTailHead(result.log, tail, head);
+    const notice = truncatedLines > 0
+      ? userPassedHead
+        ? `\n(truncated: ${truncatedLines} later lines — re-run with --head 0 for full log)`
+        : `\n(truncated: ${truncatedLines} earlier lines — re-run with --tail 0 for full log)`
+      : "";
+    emit(ctx(), { ...result, log: shown, truncatedLines }, () => shown + notice);
+  }));
 
   propagateExitOverride(cmd);
   return cmd;
+}
+
+function applyTailHead(log: string, tail?: number, head?: number): { log: string; truncatedLines: number } {
+  // Strip a single trailing newline before splitting so a 500-line log ending
+  // in "\n" doesn't read as 501 elements (which would falsely report truncation).
+  const normalized = log.endsWith("\n") ? log.slice(0, -1) : log;
+  const lines = normalized.split("\n");
+  if (head !== undefined && head > 0 && lines.length > head) {
+    return { log: lines.slice(0, head).join("\n"), truncatedLines: lines.length - head };
+  }
+  if (tail !== undefined && tail > 0 && lines.length > tail) {
+    return { log: lines.slice(-tail).join("\n"), truncatedLines: lines.length - tail };
+  }
+  return { log, truncatedLines: 0 };
 }
 
 function parseVariables(values: string[] | undefined): Array<{ key: string; value: string }> | undefined {

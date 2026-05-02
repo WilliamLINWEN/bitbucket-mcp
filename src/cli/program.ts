@@ -7,6 +7,7 @@ import { buildBranchCommand } from "./commands/branch.js";
 import { buildIssueCommand } from "./commands/issue.js";
 import { buildSearchCommand } from "./commands/search.js";
 import { buildAuthCommand } from "./commands/auth.js";
+import { AUTH_HINT } from "./errors.js";
 
 export interface BbGlobals {
   readonly json: boolean;
@@ -23,7 +24,17 @@ export function buildProgram(): Command {
     .option("--json", "output machine-readable JSON instead of human text", false)
     .option("--pretty", "pretty-print JSON output (default is compact for piping)", false)
     .option("--workspace <slug>", "Bitbucket workspace; falls back to BITBUCKET_WORKSPACE")
-    .showHelpAfterError();
+    .showHelpAfterError()
+    .addHelpText("after", `
+Exit codes:
+  0  Success
+  1  Caller error (bad arguments, missing flags, validation failure)
+  2  Upstream Bitbucket error (HTTP 4xx/5xx, including 401/403 auth)
+  3  Unknown error
+
+Auth:
+  ${AUTH_HINT}
+`);
 
   // Getter object: each subcommand reads `globals.json` at action time, after parse.
   // Don't pre-resolve `program.opts()` here — the values are not populated until

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { buildProgram } from "./program.js";
+import { AUTH_HINT } from "./errors.js";
 
 describe("cli/program buildProgram", () => {
   it("registers a `bb` program with --json and --workspace globals", () => {
@@ -21,5 +22,30 @@ describe("cli/program buildProgram", () => {
       exitCode = err.exitCode;
     }
     expect(exitCode).toBe(0);
+  });
+
+  it("--help output includes exit codes block and auth hint", async () => {
+    const program = buildProgram();
+    program.exitOverride();
+
+    const chunks: string[] = [];
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      chunks.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
+
+    try {
+      await program.parseAsync(["node", "bb", "--help"]);
+    } catch {
+      // exitOverride throws on --help; ignore the throw
+    } finally {
+      spy.mockRestore();
+    }
+
+    const output = chunks.join("");
+    expect(output).toContain("Exit codes:");
+    expect(output).toContain("0  Success");
+    expect(output).toContain("Auth:");
+    expect(output).toContain(AUTH_HINT);
   });
 });
