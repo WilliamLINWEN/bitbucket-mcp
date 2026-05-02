@@ -3,7 +3,7 @@ import * as commitsCore from "../../core/commits.js";
 import type { Commit } from "../../bitbucket-api.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
-import { emit, OutputContext } from "../format.js";
+import { emit, emitPaginated, OutputContext } from "../format.js";
 import { action } from "../action.js";
 import { parsePagelenOpt, propagateExitOverride } from "../utils.js";
 
@@ -32,7 +32,7 @@ export function buildCommitCommand(globalOpts: CommitCommandOptions): Command {
         page: opts.page,
         pagelen: opts.pagelen,
       });
-      emit(ctx(), result, () =>
+      emitPaginated(ctx(), result, () =>
         result.items.map((c: Commit) =>
           `${c.hash.substring(0, 8)}\t${c.message.split("\n")[0].slice(0, 72)}\t${c.links.html.href}`,
         ).join("\n") || "(no commits)",

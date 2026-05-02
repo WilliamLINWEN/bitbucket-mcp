@@ -3,7 +3,7 @@ import * as issuesCore from "../../core/issues.js";
 import type { Issue } from "../../bitbucket-api.js";
 import { resolveWorkspace } from "../../validation.js";
 import { createApiClient } from "../api-client.js";
-import { emit, OutputContext } from "../format.js";
+import { emitPaginated, OutputContext } from "../format.js";
 import { action } from "../action.js";
 import { parsePagelenOpt, propagateExitOverride } from "../utils.js";
 
@@ -36,7 +36,9 @@ export function buildIssueCommand(globalOpts: IssueCommandOptions): Command {
       });
       const issues = result.items;
       const filteredIssues = kind ? issues.filter((i: Issue) => i.kind === kind) : issues;
-      emit(ctx(), { ...result, items: filteredIssues }, () =>
+      // The spread { ...result, items: filteredIssues } is intentional: it
+      // forwards `result.next` so emitPaginated can attach the next-page hint.
+      emitPaginated(ctx(), { ...result, items: filteredIssues }, () =>
         filteredIssues.map((i: Issue) =>
           `#${i.id}\t${i.state}\t${i.kind}\t${i.title}\t${i.links.html.href}`,
         ).join("\n") || "(no issues)",

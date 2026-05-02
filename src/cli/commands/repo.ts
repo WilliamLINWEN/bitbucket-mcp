@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import * as repositoriesCore from "../../core/repositories.js";
 import { resolveWorkspace } from "../../validation.js";
-import { emit, OutputContext } from "../format.js";
+import { emit, emitPaginated, OutputContext } from "../format.js";
 import { createApiClient } from "../api-client.js";
 import { action } from "../action.js";
 import { parsePagelenOpt } from "../utils.js";
@@ -36,7 +36,7 @@ export function buildRepoCommand(globalOpts: RepoCommandOptions): Command {
         page: opts.page,
         pagelen: opts.pagelen,
       });
-      emit(toCtx(globalOpts), result, () => formatList(workspace, result));
+      emitPaginated(toCtx(globalOpts), result, () => formatList(workspace, result));
     }));
 
   cmd
@@ -65,7 +65,6 @@ function formatList(workspace: string, result: ListRepositoriesResult): string {
     (r) =>
       `${r.name}\t${r.is_private ? "private" : "public"}\t${r.language ?? "-"}\t${r.links.html.href}`,
   );
-  if (result.next) lines.push(`\nnext: ${result.next}`);
   return lines.join("\n");
 }
 
