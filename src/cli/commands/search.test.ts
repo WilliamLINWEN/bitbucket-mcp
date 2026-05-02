@@ -193,4 +193,28 @@ describe("cli search command", () => {
       cmd.parseAsync([], { from: "user" }),
     ).rejects.toMatchObject({ exitCode: expect.any(Number) });
   });
+
+  it("`search myquery` text mode caps display at TEXT_DISPLAY_CAP (5) per type", async () => {
+    const repoHits = Array.from({ length: 12 }, (_, i) => ({
+      type: "repositories",
+      repo: `repo-${i}`,
+      item: { name: `repo-${i}`, description: `desc-${i}`, is_private: false, language: "TypeScript", links: { html: { href: "" } } } as any,
+    }));
+    vi.spyOn(searchCore, "search").mockResolvedValue({
+      workspace: "acme",
+      query: "myquery",
+      totalRepos: 12,
+      hasMoreRepos: false,
+      hits: { repositories: repoHits, pullRequests: [], issues: [], commits: [] },
+      sections: [{ type: "repositories", searched: 12, totalRepos: 12, hasMoreRepos: false, errors: [] }],
+      totalHits: 12,
+    } as any);
+    const cmd = buildSearchCommand({ json: false, pretty: false });
+    await cmd.parseAsync(["myquery"], { from: "user" });
+    const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    expect(written).toContain("Repositories (showing 5 of 12):");
+    expect(written).toContain("repo-0");
+    expect(written).toContain("repo-4");
+    expect(written).not.toContain("repo-5"); // capped
+  });
 });
