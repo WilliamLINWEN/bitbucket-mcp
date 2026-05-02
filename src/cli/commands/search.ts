@@ -45,7 +45,7 @@ export function buildSearchCommand(globalOpts: SearchCommandOptions): Command {
         // Report section summaries
         for (const section of sections) {
           lines.push(`${section.type}: ${countHits(hits, section.type)} hits`);
-          const moreSuffix = section.hasMoreRepos ? " (more available)" : "";
+          const moreSuffix = section.hasMoreRepos ? " (more repos available)" : "";
           lines.push(`  searched ${section.searched} of ${section.totalRepos} repos${moreSuffix}`);
           if (section.errors.length > 0) {
             for (const { repo, message } of section.errors) {

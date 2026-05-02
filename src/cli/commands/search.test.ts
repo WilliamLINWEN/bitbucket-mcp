@@ -101,6 +101,7 @@ describe("cli search command", () => {
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
     expect(written).toContain("searched 3 of 10 repos");
     expect(written).not.toContain("(more available)");
+    expect(written).not.toContain("(more repos available)");
   });
 
   it("`search myquery` text mode marks hasMoreRepos with '(more available)'", async () => {
@@ -121,7 +122,7 @@ describe("cli search command", () => {
     const cmd = buildSearchCommand({ json: false, pretty: false });
     await cmd.parseAsync(["myquery"], { from: "user" });
     const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
-    expect(written).toContain("searched 10 of 10 repos (more available)");
+    expect(written).toContain("searched 10 of 10 repos (more repos available)");
   });
 
   it("`search myquery` text mode header omits prefix when K === N", async () => {
