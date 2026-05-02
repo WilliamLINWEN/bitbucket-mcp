@@ -28,17 +28,25 @@ export function propagateExitOverride(cmd: Command): void {
 
 /** Parse an integer command-line option, throwing CliError on NaN or mixed content. */
 export function parseIntOpt(value: string): number {
-  if (!/^-?\d+$/.test(value)) throw new CliError(`expected integer, got: ${value}`);
+  if (!/^-?\d+$/.test(value)) {
+    throw new CliError(`expected integer (e.g., '42'), got: '${value}'`);
+  }
   const n = Number.parseInt(value, 10);
-  if (n <= 0) throw new CliError(`expected positive integer, got: ${value}`);
+  if (n <= 0) {
+    throw new CliError(`expected positive integer (e.g., '42'), got: '${value}'`);
+  }
   return n;
 }
 
 /** Parse a positional integer argument, throwing CliError on NaN or mixed content. */
 export function parseIntStrict(value: string, label: string): number {
-  if (!/^-?\d+$/.test(value)) throw new CliError(`${label} must be an integer, got: ${value}`);
+  if (!/^-?\d+$/.test(value)) {
+    throw new CliError(`${label} must be an integer (e.g., '42'), got: '${value}'`);
+  }
   const n = Number.parseInt(value, 10);
-  if (n <= 0) throw new CliError(`${label} must be a positive integer, got: ${value}`);
+  if (n <= 0) {
+    throw new CliError(`${label} must be a positive integer (e.g., '42'), got: '${value}'`);
+  }
   return n;
 }
 
