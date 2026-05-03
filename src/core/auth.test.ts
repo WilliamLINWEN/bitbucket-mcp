@@ -106,6 +106,13 @@ describe("hasAnyEnvCred — env precedence predicate", () => {
     expect(hasAnyEnvCred()).toBe(true);
   });
 
+  it("returns true when BITBUCKET_USERNAME + BITBUCKET_API_TOKEN are both set", () => {
+    clearAuthEnv();
+    process.env.BITBUCKET_USERNAME = "alice";
+    process.env.BITBUCKET_API_TOKEN = "tok";
+    expect(hasAnyEnvCred()).toBe(true);
+  });
+
   it("returns false when only BITBUCKET_USERNAME is set (no token, no password)", () => {
     clearAuthEnv();
     process.env.BITBUCKET_USERNAME = "alice";

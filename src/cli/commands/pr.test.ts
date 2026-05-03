@@ -92,7 +92,7 @@ describe("cli pr command", () => {
           ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts"],
           { from: "user" },
         ),
-      ).rejects.toThrow(/__exit/);
+      ).rejects.toThrow("__exit:1");
       const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
       expect(stderr).toContain("--file requires both --from and --to");
     } finally {
@@ -114,7 +114,7 @@ describe("cli pr command", () => {
           ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts", "--from", "1"],
           { from: "user" },
         ),
-      ).rejects.toThrow(/__exit/);
+      ).rejects.toThrow("__exit:1");
       const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
       expect(stderr).toContain("--file requires both --from and --to");
     } finally {
@@ -136,7 +136,7 @@ describe("cli pr command", () => {
           ["comment", "create", "7", "-r", "r1", "-m", "x", "--from", "1", "--to", "2"],
           { from: "user" },
         ),
-      ).rejects.toThrow(/__exit/);
+      ).rejects.toThrow("__exit:1");
       const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
       expect(stderr).toContain("--from/--to require --file");
     } finally {
