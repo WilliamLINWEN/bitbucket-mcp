@@ -51,12 +51,18 @@ export function buildCommitCommand(globalOpts: CommitCommandOptions): Command {
       const author = commit.author.user
         ? `${commit.author.user.display_name} (@${commit.author.user.username})`
         : commit.author.raw;
-      emit(ctx(), commit, () => [
-        `${commit.hash.substring(0, 8)} ${commit.message.split("\n")[0]}`,
+      const subject = commit.message.split("\n")[0];
+      const body = commit.message.slice(subject.length).replace(/^\n+/, "").replace(/\n+$/, "");
+      const lines = [
+        `${commit.hash.substring(0, 8)} ${subject}`,
         `author: ${author}`,
         `date: ${new Date(commit.date).toISOString()}`,
         `url: ${commit.links.html.href}`,
-      ].join("\n"));
+      ];
+      if (body.length > 0) {
+        lines.push("", body);
+      }
+      emit(ctx(), commit, () => lines.join("\n"));
     }));
 
   propagateExitOverride(cmd);

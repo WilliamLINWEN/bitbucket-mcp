@@ -78,6 +78,25 @@ describe("cli commit command", () => {
     });
   });
 
+  it("`commit view <hash> -r r1` text mode prints full multi-line message body", async () => {
+    vi.spyOn(commitsCore, "getCommit").mockResolvedValue({
+      hash: "abc123def456",
+      message: "Subject line of commit\n\nBody paragraph one with detail.\n\nBody paragraph two.",
+      author: { user: { display_name: "Alice", username: "alice" } },
+      date: "2026-05-02T10:00:00Z",
+      parents: [],
+      links: { html: { href: "https://bitbucket.org/acme/r1/commits/abc123" } },
+    } as any);
+    const cmd = buildCommitCommand({ json: false, pretty: false });
+    await cmd.parseAsync(["view", "abc123def456", "-r", "r1"], { from: "user" });
+    const written = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join("");
+    // Subject line still appears in the heading
+    expect(written).toContain("abc123de Subject line of commit");
+    // Body paragraphs must also appear in text mode
+    expect(written).toContain("Body paragraph one with detail.");
+    expect(written).toContain("Body paragraph two.");
+  });
+
   it("`commit list -r r1` requires --repo", async () => {
     const cmd = buildCommitCommand({ json: true, pretty: false });
     cmd.exitOverride();
