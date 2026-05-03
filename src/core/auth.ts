@@ -31,18 +31,18 @@ function buildHeader(creds: StaticCredentials): string | null {
  * Returns true if `EnvAuthProvider` would be able to construct a non-null auth
  * header from the current `process.env`.
  *
- * Mirrors the precedence in `buildHeader`:
- *   - BITBUCKET_API_TOKEN alone is sufficient (Bearer or Basic+username).
- *   - BITBUCKET_USERNAME + BITBUCKET_APP_PASSWORD is sufficient.
- *   - BITBUCKET_USERNAME alone is NOT sufficient.
+ * Delegates to `buildHeader` so the precedence rule has exactly one
+ * implementation — adding a new credential combination there automatically
+ * lights this predicate up too.
  *
- * Used by `cli/api-client.ts` for the pre-flight check. Keep this and
- * `buildHeader` in lockstep — they're the same precedence expressed two ways.
+ * Used by `cli/api-client.ts` for the pre-flight check.
  */
 export function hasAnyEnvCred(): boolean {
-  if (process.env.BITBUCKET_API_TOKEN) return true;
-  if (process.env.BITBUCKET_USERNAME && process.env.BITBUCKET_APP_PASSWORD) return true;
-  return false;
+  return buildHeader({
+    username: process.env.BITBUCKET_USERNAME,
+    appPassword: process.env.BITBUCKET_APP_PASSWORD,
+    apiToken: process.env.BITBUCKET_API_TOKEN,
+  }) !== null;
 }
 
 export class StaticAuthProvider implements AuthProvider {
