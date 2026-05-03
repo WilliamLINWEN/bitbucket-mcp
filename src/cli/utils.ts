@@ -62,7 +62,7 @@ export function parseNonNegativeIntOpt(value: string): number {
 export function parsePagelenOpt(value: string): number {
   const n = parseIntOpt(value);
   if (n < 10 || n > 100) {
-    throw new CliError(`--pagelen must be between 10 and 100; got: ${value}`);
+    throw new CliError(`--pagelen must be between 10 and 100 (e.g., '50'), got: '${value}'`);
   }
   return n;
 }

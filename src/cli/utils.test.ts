@@ -78,8 +78,10 @@ describe("parsePagelenOpt", () => {
     expect(() => parsePagelenOpt("5")).toThrow(/10 and 100/);
   });
 
-  it("rejects values above 100", () => {
-    expect(() => parsePagelenOpt("500")).toThrow(/10 and 100/);
+  it("rejects values above 100 with format example", () => {
+    expect(() => parsePagelenOpt("500")).toThrow(
+      "--pagelen must be between 10 and 100 (e.g., '50'), got: '500'",
+    );
   });
 
   it("rejects non-positive integers", () => {
