@@ -64,7 +64,7 @@ Add this to your `claude_desktop_config.json` file (usually located at `%APPDATA
 > The `-p ... bitbucket-mcp` flag is required because the package ships two
 > binaries (`bitbucket-mcp` for the MCP server, `bb` for the CLI), so `npx`
 > can't infer which to run from the package name alone.
-
+>
 > **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
 
 ## Environment Variables
