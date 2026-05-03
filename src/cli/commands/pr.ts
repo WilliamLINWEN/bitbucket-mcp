@@ -133,7 +133,18 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .option("--from <line>", "Inline comment: old-version line number", parseIntOpt)
     .option("--to <line>", "Inline comment: new-version line number", parseIntOpt)
     .action(action(async (id: string, opts) => {
-      const inline = opts.file
+      const hasFile = opts.file !== undefined;
+      const hasFrom = opts.from !== undefined;
+      const hasTo = opts.to !== undefined;
+      if (hasFile && !(hasFrom && hasTo)) {
+        throw new CliError(
+          "--file requires both --from and --to (inline comment needs the file path plus old-version and new-version line numbers)",
+        );
+      }
+      if (!hasFile && (hasFrom || hasTo)) {
+        throw new CliError("--from/--to require --file (inline comment needs a file path)");
+      }
+      const inline = hasFile
         ? { path: opts.file as string, from: opts.from, to: opts.to }
         : undefined;
       const c = await prCommentsCore.createPrComment(createApiClient(), {

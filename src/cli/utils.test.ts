@@ -9,17 +9,23 @@ describe("parseIntStrict", () => {
 
   it("throws CliError for negative integers", () => {
     expect(() => parseIntStrict("-7", "val")).toThrow(CliError);
-    expect(() => parseIntStrict("-7", "val")).toThrow("val must be a positive integer, got: -7");
+    expect(() => parseIntStrict("-7", "val")).toThrow(
+      "val must be a positive integer (e.g., '42'), got: '-7'",
+    );
   });
 
   it("throws CliError for zero", () => {
     expect(() => parseIntStrict("0", "pr id")).toThrow(CliError);
-    expect(() => parseIntStrict("0", "pr id")).toThrow("pr id must be a positive integer, got: 0");
+    expect(() => parseIntStrict("0", "pr id")).toThrow(
+      "pr id must be a positive integer (e.g., '42'), got: '0'",
+    );
   });
 
   it("throws CliError for mixed-content input like '12abc'", () => {
     expect(() => parseIntStrict("12abc", "pr id")).toThrow(CliError);
-    expect(() => parseIntStrict("12abc", "pr id")).toThrow("pr id must be an integer, got: 12abc");
+    expect(() => parseIntStrict("12abc", "pr id")).toThrow(
+      "pr id must be an integer (e.g., '42'), got: '12abc'",
+    );
   });
 
   it("throws CliError for non-numeric input", () => {
@@ -38,17 +44,23 @@ describe("parseIntOpt", () => {
 
   it("throws CliError for negative integer", () => {
     expect(() => parseIntOpt("-1")).toThrow(CliError);
-    expect(() => parseIntOpt("-1")).toThrow("expected positive integer, got: -1");
+    expect(() => parseIntOpt("-1")).toThrow(
+      "expected positive integer (e.g., '42'), got: '-1'",
+    );
   });
 
   it("throws CliError for zero", () => {
     expect(() => parseIntOpt("0")).toThrow(CliError);
-    expect(() => parseIntOpt("0")).toThrow("expected positive integer, got: 0");
+    expect(() => parseIntOpt("0")).toThrow(
+      "expected positive integer (e.g., '42'), got: '0'",
+    );
   });
 
   it("throws CliError for mixed-content input like '12abc'", () => {
     expect(() => parseIntOpt("12abc")).toThrow(CliError);
-    expect(() => parseIntOpt("12abc")).toThrow("expected integer, got: 12abc");
+    expect(() => parseIntOpt("12abc")).toThrow(
+      "expected integer (e.g., '42'), got: '12abc'",
+    );
   });
 
   it("throws CliError for non-numeric input", () => {

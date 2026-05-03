@@ -27,6 +27,24 @@ function buildHeader(creds: StaticCredentials): string | null {
   return null;
 }
 
+/**
+ * Returns true if `EnvAuthProvider` would be able to construct a non-null auth
+ * header from the current `process.env`.
+ *
+ * Delegates to `buildHeader` so the precedence rule has exactly one
+ * implementation — adding a new credential combination there automatically
+ * lights this predicate up too.
+ *
+ * Used by `cli/api-client.ts` for the pre-flight check.
+ */
+export function hasAnyEnvCred(): boolean {
+  return buildHeader({
+    username: process.env.BITBUCKET_USERNAME,
+    appPassword: process.env.BITBUCKET_APP_PASSWORD,
+    apiToken: process.env.BITBUCKET_API_TOKEN,
+  }) !== null;
+}
+
 export class StaticAuthProvider implements AuthProvider {
   constructor(private readonly creds: StaticCredentials) {}
   async getAuthHeader(): Promise<string | null> {
