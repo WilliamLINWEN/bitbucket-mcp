@@ -44,14 +44,14 @@ Add this to your `claude_desktop_config.json` file (usually located at `%APPDATA
 
 ### Using NPX (Alternative)
 
-If you have installed the package from npm (`npm install -g bitbucket-mcp-server`), you can use:
+`npx` fetches and runs the package on demand — no global install required:
 
 ```json
 {
   "mcpServers": {
     "bitbucket-mcp": {
       "command": "npx",
-      "args": ["bitbucket-mcp-server"],
+      "args": ["-y", "-p", "bitbucket-mcp-server@latest", "bitbucket-mcp"],
       "env": {
         "BITBUCKET_USERNAME": "your-atlassian-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token"
@@ -60,6 +60,10 @@ If you have installed the package from npm (`npm install -g bitbucket-mcp-server
   }
 }
 ```
+
+> The `-p ... bitbucket-mcp` flag is required because the package ships two
+> binaries (`bitbucket-mcp` for the MCP server, `bb` for the CLI), so `npx`
+> can't infer which to run from the package name alone.
 
 > **Note:** If you are using a Workspace or Project access token instead of a User API token, you can omit `BITBUCKET_USERNAME` from the configuration.
 
