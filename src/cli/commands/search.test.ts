@@ -104,7 +104,7 @@ describe("cli search command", () => {
     expect(written).not.toContain("(more repos available)");
   });
 
-  it("`search myquery` text mode marks hasMoreRepos with '(more available)'", async () => {
+  it("`search myquery` text mode marks hasMoreRepos with '(more repos available)'", async () => {
     const repoHits = [{
       type: "repositories",
       repo: "r1",

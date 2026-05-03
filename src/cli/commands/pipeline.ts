@@ -74,6 +74,7 @@ export function buildPipelineCommand(globalOpts: PipelineCommandOptions): Comman
         ref_type = "tag";
         ref_name = opts.tag;
       }
+      // else: commit-only — ref_type/ref_name stay undefined; commit_hash is set below.
       const variables = parseVariables(opts.var);
       const p = await pipelinesCore.triggerPipeline(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,

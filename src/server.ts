@@ -10,6 +10,7 @@ import { setupProtocolMonitoring } from "./monitoring/protocol-monitor.js";
 import { setupTransportMonitoring, setupTransportMessageMonitoring } from "./monitoring/transport-monitor.js";
 import { registerTools } from "./tools/index.js";
 import logger from "./debug-logger.js";
+import { hasAnyEnvCred } from "./core/auth.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -189,7 +190,7 @@ export async function startServer(): Promise<void> {
     logger.info('startup', 'Bitbucket MCP Server started successfully', {
       startupTime: startupDuration,
       environment: {
-        authenticated: !!(BITBUCKET_API_TOKEN || (BITBUCKET_USERNAME && BITBUCKET_APP_PASSWORD)),
+        authenticated: hasAnyEnvCred(),
         nodeVersion: process.version,
         platform: process.platform
       }

@@ -138,14 +138,14 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
       const hasTo = opts.to !== undefined;
       if (hasFile && !(hasFrom && hasTo)) {
         throw new CliError(
-          "--file requires both --from and --to (inline comment needs the file path plus old-version and new-version line numbers)",
+          "--file requires both --from and --to (both line numbers are required for inline comments)",
         );
       }
       if (!hasFile && (hasFrom || hasTo)) {
         throw new CliError("--from/--to require --file (inline comment needs a file path)");
       }
       const inline = hasFile
-        ? { path: opts.file as string, from: opts.from, to: opts.to }
+        ? { path: opts.file!, from: opts.from, to: opts.to }
         : undefined;
       const c = await prCommentsCore.createPrComment(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,

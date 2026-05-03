@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { buildPrCommand } from "./pr.js";
 import * as prCore from "../../core/pull-requests.js";
+import { expectCliRejection } from "../test-utils.js";
 
 describe("cli pr command", () => {
   let stdoutSpy: ReturnType<typeof vi.spyOn>;
@@ -81,68 +82,26 @@ describe("cli pr command", () => {
 
   it("`pr comment create --file foo.ts` without --from or --to throws", async () => {
     const cmd = buildPrCommand({ json: true, pretty: false });
-    cmd.exitOverride();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
-      throw new Error(`__exit:${code ?? 0}`);
-    }) as any;
-    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    try {
-      await expect(
-        cmd.parseAsync(
-          ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts"],
-          { from: "user" },
-        ),
-      ).rejects.toThrow("__exit:1");
-      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
-      expect(stderr).toContain("--file requires both --from and --to");
-    } finally {
-      exitSpy.mockRestore();
-      stderrSpy.mockRestore();
-    }
+    await expectCliRejection(cmd, {
+      argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts"],
+      stderrIncludes: "--file requires both --from and --to",
+    });
   });
 
   it("`pr comment create --file foo.ts --from 1` (missing --to) throws", async () => {
     const cmd = buildPrCommand({ json: true, pretty: false });
-    cmd.exitOverride();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
-      throw new Error(`__exit:${code ?? 0}`);
-    }) as any;
-    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    try {
-      await expect(
-        cmd.parseAsync(
-          ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts", "--from", "1"],
-          { from: "user" },
-        ),
-      ).rejects.toThrow("__exit:1");
-      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
-      expect(stderr).toContain("--file requires both --from and --to");
-    } finally {
-      exitSpy.mockRestore();
-      stderrSpy.mockRestore();
-    }
+    await expectCliRejection(cmd, {
+      argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts", "--from", "1"],
+      stderrIncludes: "--file requires both --from and --to",
+    });
   });
 
   it("`pr comment create --from 1 --to 2` (no --file) throws", async () => {
     const cmd = buildPrCommand({ json: true, pretty: false });
-    cmd.exitOverride();
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: any) => {
-      throw new Error(`__exit:${code ?? 0}`);
-    }) as any;
-    const stderrSpy = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
-    try {
-      await expect(
-        cmd.parseAsync(
-          ["comment", "create", "7", "-r", "r1", "-m", "x", "--from", "1", "--to", "2"],
-          { from: "user" },
-        ),
-      ).rejects.toThrow("__exit:1");
-      const stderr = stderrSpy.mock.calls.map((c: unknown[]) => String(c[0])).join("");
-      expect(stderr).toContain("--from/--to require --file");
-    } finally {
-      exitSpy.mockRestore();
-      stderrSpy.mockRestore();
-    }
+    await expectCliRejection(cmd, {
+      argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--from", "1", "--to", "2"],
+      stderrIncludes: "--from/--to require --file",
+    });
   });
 
   it("`pr comment create --file foo.ts --from 1 --to 2` posts an inline comment", async () => {
