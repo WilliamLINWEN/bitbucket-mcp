@@ -36,9 +36,9 @@ export async function expectCliRejection(
   opts: ExpectCliRejectionOpts,
 ): Promise<void> {
   const exitCode = opts.exitCode ?? 1;
-  const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: number) => {
+  const exitSpy = vi.spyOn(process, "exit").mockImplementation((code?: string | number | null) => {
     throw new Error(`__exit:${code ?? 0}`);
-  }) as unknown as ReturnType<typeof vi.spyOn>;
+  });
   const stderrSpy = vi
     .spyOn(process.stderr, "write")
     .mockImplementation(() => true);
