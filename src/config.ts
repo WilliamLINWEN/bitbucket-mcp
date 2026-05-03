@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { hasEnvApiToken, hasEnvAppPasswordPair } from "./core/auth.js";
 
 /**
  * Configuration schema for the Bitbucket MCP server
@@ -184,9 +185,10 @@ export function validateEnvironment(): { valid: boolean; errors: string[]; warni
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  // Required environment variables
-  const hasApiToken = !!process.env.BITBUCKET_API_TOKEN;
-  const hasAppPassword = !!(process.env.BITBUCKET_USERNAME && process.env.BITBUCKET_APP_PASSWORD);
+  // Required environment variables — use helpers from core/auth.ts so the
+  // precedence rule has a single source of truth.
+  const hasApiToken = hasEnvApiToken();
+  const hasAppPassword = hasEnvAppPasswordPair();
 
   if (!hasApiToken && !hasAppPassword) {
     errors.push('Authentication not configured. Set BITBUCKET_API_TOKEN (recommended) or BITBUCKET_USERNAME and BITBUCKET_APP_PASSWORD environment variables.');
