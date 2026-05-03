@@ -23,8 +23,12 @@ Run directly without cloning the repository:
 ```bash
 BITBUCKET_USERNAME="your-email@example.com" \
 BITBUCKET_API_TOKEN="your-api-token" \
-npx -y bitbucket-mcp-server@latest
+npx -y -p bitbucket-mcp-server@latest bitbucket-mcp
 ```
+
+> The `-p ... bitbucket-mcp` flag tells `npx` which bin to run. The package
+> ships two binaries — `bitbucket-mcp` (the MCP server) and `bb` (the CLI) —
+> so the bin name must be specified explicitly.
 
 ### From Source
 
@@ -167,7 +171,7 @@ Add this server to your MCP client configuration (e.g., `claude_desktop_config.j
   "mcpServers": {
     "bitbucket-mcp": {
       "command": "npx",
-      "args": ["-y", "bitbucket-mcp-server@latest"],
+      "args": ["-y", "-p", "bitbucket-mcp-server@latest", "bitbucket-mcp"],
       "env": {
         "BITBUCKET_USERNAME": "your-email@example.com",
         "BITBUCKET_API_TOKEN": "your-api-token",
