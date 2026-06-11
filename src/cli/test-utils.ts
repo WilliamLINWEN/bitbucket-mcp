@@ -21,7 +21,7 @@ export interface ExpectCliRejectionOpts {
  * const cmd = buildPrCommand({ json: true, pretty: false });
  * await expectCliRejection(cmd, {
  *   argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts"],
- *   stderrIncludes: "--file requires both --from and --to",
+ *   stderrIncludes: "--file requires --from (old-side line) and/or --to (new-side line)",
  * });
  * ```
  *

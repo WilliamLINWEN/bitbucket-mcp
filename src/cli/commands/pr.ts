@@ -130,22 +130,26 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
     .requiredOption("-m, --message <text>", "Comment text")
     .option("--parent <commentId>", "Reply to comment id", parseIntOpt)
     .option("--file <path>", "Inline comment: file path")
-    .option("--from <line>", "Inline comment: old-version line number", parseIntOpt)
-    .option("--to <line>", "Inline comment: new-version line number", parseIntOpt)
+    .option("--from <line>", "Inline comment: old-version line number (use alone for deleted lines)", parseIntOpt)
+    .option("--to <line>", "Inline comment: new-version line number (use alone for added/context lines)", parseIntOpt)
     .action(action(async (id: string, opts) => {
       const hasFile = opts.file !== undefined;
       const hasFrom = opts.from !== undefined;
       const hasTo = opts.to !== undefined;
-      if (hasFile && !(hasFrom && hasTo)) {
+      if (hasFile && !hasFrom && !hasTo) {
         throw new CliError(
-          "--file requires both --from and --to (both line numbers are required for inline comments)",
+          "--file requires --from (old-side line) and/or --to (new-side line)",
         );
       }
       if (!hasFile && (hasFrom || hasTo)) {
         throw new CliError("--from/--to require --file (inline comment needs a file path)");
       }
       const inline = hasFile
-        ? { path: opts.file!, from: opts.from, to: opts.to }
+        ? {
+            path: opts.file!,
+            ...(hasFrom && { from: opts.from }),
+            ...(hasTo && { to: opts.to }),
+          }
         : undefined;
       const c = await prCommentsCore.createPrComment(createApiClient(), {
         workspace: ws(), repo_slug: opts.repo,

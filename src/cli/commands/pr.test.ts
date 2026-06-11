@@ -84,16 +84,36 @@ describe("cli pr command", () => {
     const cmd = buildPrCommand({ json: true, pretty: false });
     await expectCliRejection(cmd, {
       argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts"],
-      stderrIncludes: "--file requires both --from and --to",
+      stderrIncludes: "--file requires --from (old-side line) and/or --to (new-side line)",
     });
   });
 
-  it("`pr comment create --file foo.ts --from 1` (missing --to) throws", async () => {
+  it("`pr comment create --file foo.ts --to 134` posts a to-only inline comment (added line)", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
+      id: 101, links: { html: { href: "u" } },
+    } as any);
     const cmd = buildPrCommand({ json: true, pretty: false });
-    await expectCliRejection(cmd, {
-      argv: ["comment", "create", "7", "-r", "r1", "-m", "x", "--file", "foo.ts", "--from", "1"],
-      stderrIncludes: "--file requires both --from and --to",
-    });
+    await cmd.parseAsync(
+      ["comment", "create", "7", "-r", "r1", "-m", "hi", "--file", "foo.ts", "--to", "134"],
+      { from: "user" },
+    );
+    const input = vi.mocked(prCommentsCore.createPrComment).mock.calls[0][1];
+    expect(input.inline).toStrictEqual({ path: "foo.ts", to: 134 });
+  });
+
+  it("`pr comment create --file foo.ts --from 1` posts a from-only inline comment (deleted line)", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
+      id: 102, links: { html: { href: "u" } },
+    } as any);
+    const cmd = buildPrCommand({ json: true, pretty: false });
+    await cmd.parseAsync(
+      ["comment", "create", "7", "-r", "r1", "-m", "hi", "--file", "foo.ts", "--from", "1"],
+      { from: "user" },
+    );
+    const input = vi.mocked(prCommentsCore.createPrComment).mock.calls[0][1];
+    expect(input.inline).toStrictEqual({ path: "foo.ts", from: 1 });
   });
 
   it("`pr comment create --from 1 --to 2` (no --file) throws", async () => {
