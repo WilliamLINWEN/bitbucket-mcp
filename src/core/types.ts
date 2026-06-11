@@ -182,6 +182,22 @@ export interface CreatePrCommentInput {
 }
 export type CreatePrCommentResult = Comment;
 
+export interface UpdatePrCommentInput {
+  workspace: string;
+  repo_slug: string;
+  pull_request_id: number;
+  comment_id: number;
+  content: string;
+}
+export type UpdatePrCommentResult = Comment;
+
+export interface DeletePrCommentInput {
+  workspace: string;
+  repo_slug: string;
+  pull_request_id: number;
+  comment_id: number;
+}
+
 export interface ListPipelinesInput {
   workspace: string;
   repo_slug: string;

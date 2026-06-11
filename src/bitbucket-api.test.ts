@@ -1539,3 +1539,58 @@ describe('BitbucketAPI', () => {
     });
   });
 });
+
+describe('BitbucketAPI pr comment delete/edit', () => {
+  let api: BitbucketAPI;
+
+  beforeEach(() => {
+    vi.spyOn(console, 'error').mockImplementation(() => { });
+    api = new BitbucketAPI();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('deletePullRequestComment issues DELETE and tolerates the 204 empty body', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 204,
+      // A real 204 has no body; parsing it must not be attempted.
+      json: vi.fn().mockRejectedValue(new Error('Unexpected end of JSON input')),
+    });
+
+    await expect(
+      api.deletePullRequestComment('testworkspace', 'test-repo', 123, 456),
+    ).resolves.toBeUndefined();
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments/456',
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+  });
+
+  it('updatePullRequestComment issues PUT with the new content and returns the comment', async () => {
+    const updated = { id: 456, content: { raw: 'new text' } };
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: vi.fn().mockResolvedValue(updated),
+    });
+
+    const result = await api.updatePullRequestComment(
+      'testworkspace', 'test-repo', 123, 456, 'new text',
+    );
+
+    expect(result).toEqual(updated);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://api.bitbucket.org/2.0/repositories/testworkspace/test-repo/pullrequests/123/comments/456',
+      expect.objectContaining({
+        method: 'PUT',
+        headers: expect.objectContaining({ 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ content: { raw: 'new text' } }),
+      }),
+    );
+  });
+});

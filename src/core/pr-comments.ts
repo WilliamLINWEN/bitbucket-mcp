@@ -3,6 +3,8 @@ import type {
   ListPrCommentsInput, ListPrCommentsResult,
   GetPrCommentInput, GetPrCommentResult,
   CreatePrCommentInput, CreatePrCommentResult,
+  UpdatePrCommentInput, UpdatePrCommentResult,
+  DeletePrCommentInput,
 } from "./types.js";
 
 export async function listPrComments(
@@ -37,5 +39,22 @@ export async function createPrComment(
     input.content,
     input.inline,
     input.parent_id,
+  );
+}
+
+export async function updatePrComment(
+  api: BitbucketAPI, input: UpdatePrCommentInput,
+): Promise<UpdatePrCommentResult> {
+  return api.updatePullRequestComment(
+    input.workspace, input.repo_slug, input.pull_request_id,
+    input.comment_id, input.content,
+  );
+}
+
+export async function deletePrComment(
+  api: BitbucketAPI, input: DeletePrCommentInput,
+): Promise<void> {
+  await api.deletePullRequestComment(
+    input.workspace, input.repo_slug, input.pull_request_id, input.comment_id,
   );
 }

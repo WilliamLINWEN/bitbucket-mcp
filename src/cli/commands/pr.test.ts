@@ -124,6 +124,34 @@ describe("cli pr command", () => {
     });
   });
 
+  it("`pr comment delete 7 99 -r r1` calls core and confirms deletion", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "deletePrComment").mockResolvedValue(undefined);
+    const cmd = buildPrCommand({ json: false, pretty: false });
+    await cmd.parseAsync(["comment", "delete", "7", "99", "-r", "r1"], { from: "user" });
+    expect(prCommentsCore.deletePrComment).toHaveBeenCalledWith(expect.anything(), {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 7, comment_id: 99,
+    });
+    const written = (stdoutSpy.mock.calls as [string][]).map(([s]) => s).join("");
+    expect(written).toContain("deleted comment #99");
+  });
+
+  it("`pr comment edit 7 99 -r r1 -m <text>` calls core with the new content", async () => {
+    const prCommentsCore = await import("../../core/pr-comments.js");
+    vi.spyOn(prCommentsCore, "updatePrComment").mockResolvedValue({
+      id: 99, links: { html: { href: "u" } },
+    } as any);
+    const cmd = buildPrCommand({ json: true, pretty: false });
+    await cmd.parseAsync(
+      ["comment", "edit", "7", "99", "-r", "r1", "-m", "new text"],
+      { from: "user" },
+    );
+    expect(prCommentsCore.updatePrComment).toHaveBeenCalledWith(expect.anything(), {
+      workspace: "acme", repo_slug: "r1", pull_request_id: 7, comment_id: 99,
+      content: "new text",
+    });
+  });
+
   it("`pr comment create --file foo.ts --from 1 --to 2` posts an inline comment", async () => {
     const prCommentsCore = await import("../../core/pr-comments.js");
     vi.spyOn(prCommentsCore, "createPrComment").mockResolvedValue({
