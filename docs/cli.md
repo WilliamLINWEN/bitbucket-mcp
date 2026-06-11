@@ -276,14 +276,19 @@ Options:
 - `--repo <slug>` — **(Required)** Repository slug
 - `--message <text>` — **(Required)** Comment text
 - `--parent <commentId>` — Reply to a comment (comment ID)
-- `--file <path>` — Inline comment: file path
-- `--from <line>` — Inline comment: old-version line number
-- `--to <line>` — Inline comment: new-version line number
+- `--file <path>` — Inline comment: file path (requires `--from` and/or `--to`)
+- `--from <line>` — Inline comment: old-version line number (use alone for deleted lines)
+- `--to <line>` — Inline comment: new-version line number (use alone for added/context lines)
+
+For inline comments, `--to` anchors on the new version of the file and `--from` on the old
+version. Use only `--to` for added or unchanged lines and only `--from` for deleted lines;
+passing both creates a dual anchor, which Bitbucket renders on both sides of the diff.
 
 Examples:
 ```bash
 bb --workspace myworkspace pr comment create 42 -r my-app -m "Looks good!"
 bb --workspace myworkspace pr comment create 42 -r my-app -m "Not quite..." --parent 123
+bb --workspace myworkspace pr comment create 42 -r my-app -m "Typo here" --file src/app.ts --to 134
 ```
 
 ### `bb commit`
