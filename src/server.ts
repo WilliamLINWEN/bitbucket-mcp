@@ -11,6 +11,7 @@ import { setupTransportMonitoring, setupTransportMessageMonitoring } from "./mon
 import { registerTools } from "./tools/index.js";
 import logger from "./debug-logger.js";
 import { hasAnyEnvCred } from "./core/auth.js";
+import { PACKAGE_VERSION } from "./utils/package-version.js";
 
 // Environment variables for authentication
 const BITBUCKET_USERNAME = process.env.BITBUCKET_USERNAME;
@@ -60,7 +61,7 @@ export async function createServer(): Promise<{ server: McpServer; transport: St
   const server = new McpServer(
     {
       name: "bitbucket-mcp",
-      version: "1.0.0",
+      version: PACKAGE_VERSION,
     },
     {
       capabilities: {
