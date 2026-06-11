@@ -48,4 +48,29 @@ describe("cli/program buildProgram", () => {
     expect(output).toContain("Auth:");
     expect(output).toContain(AUTH_HINT);
   });
+
+  it("--version prints the version from package.json, not a hardcoded string", async () => {
+    // Read the expected version independently of the implementation.
+    const { readFileSync } = await import("node:fs");
+    const expected = JSON.parse(readFileSync("package.json", "utf8")).version;
+
+    const program = buildProgram();
+    program.exitOverride();
+
+    const chunks: string[] = [];
+    const spy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
+      chunks.push(typeof chunk === "string" ? chunk : chunk.toString());
+      return true;
+    });
+
+    try {
+      await program.parseAsync(["node", "bb", "--version"]);
+    } catch {
+      // exitOverride throws on --version; ignore the throw
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(chunks.join("").trim()).toBe(expected);
+  });
 });

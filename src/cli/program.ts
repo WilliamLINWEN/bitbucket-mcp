@@ -8,6 +8,7 @@ import { buildIssueCommand } from "./commands/issue.js";
 import { buildSearchCommand } from "./commands/search.js";
 import { buildAuthCommand } from "./commands/auth.js";
 import { AUTH_HINT } from "./errors.js";
+import { PACKAGE_VERSION } from "../utils/package-version.js";
 
 export interface BbGlobals {
   readonly json: boolean;
@@ -20,7 +21,7 @@ export function buildProgram(): Command {
   program
     .name("bb")
     .description("Bitbucket CLI — terminal access to the same tools exposed via MCP")
-    .version("2.0.0")
+    .version(PACKAGE_VERSION)
     .option("--json", "output machine-readable JSON instead of human text", false)
     .option("--pretty", "pretty-print JSON output (default is compact for piping)", false)
     .option("--workspace <slug>", "Bitbucket workspace; falls back to BITBUCKET_WORKSPACE")
