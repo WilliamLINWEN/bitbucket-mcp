@@ -69,3 +69,26 @@ describe("core/pr-comments", () => {
     );
   });
 });
+
+describe("core/pr-comments delete/edit", () => {
+  it("deletePrComment delegates to the API client", async () => {
+    const { deletePrComment } = await import("./pr-comments.js");
+    const del = vi.fn().mockResolvedValue(undefined);
+    const api = fakeApi({ deletePullRequestComment: del } as any);
+    await deletePrComment(api, {
+      workspace: "w", repo_slug: "r", pull_request_id: 7, comment_id: 99,
+    });
+    expect(del).toHaveBeenCalledWith("w", "r", 7, 99);
+  });
+
+  it("updatePrComment forwards the new content and returns the comment", async () => {
+    const { updatePrComment } = await import("./pr-comments.js");
+    const upd = vi.fn().mockResolvedValue({ id: 99 });
+    const api = fakeApi({ updatePullRequestComment: upd } as any);
+    const result = await updatePrComment(api, {
+      workspace: "w", repo_slug: "r", pull_request_id: 7, comment_id: 99, content: "new",
+    });
+    expect(upd).toHaveBeenCalledWith("w", "r", 7, 99, "new");
+    expect(result).toEqual({ id: 99 });
+  });
+});

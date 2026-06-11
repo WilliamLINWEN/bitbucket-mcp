@@ -291,6 +291,28 @@ bb --workspace myworkspace pr comment create 42 -r my-app -m "Not quite..." --pa
 bb --workspace myworkspace pr comment create 42 -r my-app -m "Typo here" --file src/app.ts --to 134
 ```
 
+**`bb pr comment edit <id> <commentId> --repo <slug> --message <text>`**
+
+Edit an existing comment on a pull request. The new text replaces the old content entirely.
+
+Options:
+- `--repo <slug>` — **(Required)** Repository slug
+- `--message <text>` — **(Required)** New comment text
+
+**`bb pr comment delete <id> <commentId> --repo <slug>`**
+
+Delete a comment on a pull request. Bitbucket soft-deletes the comment (`deleted: true`);
+deleting a comment that has replies leaves the replies in place without their parent.
+
+Options:
+- `--repo <slug>` — **(Required)** Repository slug
+
+Examples:
+```bash
+bb --workspace myworkspace pr comment edit 42 123 -r my-app -m "Fixed wording"
+bb --workspace myworkspace pr comment delete 42 123 -r my-app
+```
+
 ### `bb commit`
 
 Commit operations.

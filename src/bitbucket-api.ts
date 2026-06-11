@@ -356,6 +356,9 @@ export class BitbucketAPI {
         }
 
         console.error(`Request successful: ${response.status}`);
+        if (response.status === 204) {
+          return undefined as T;
+        }
         return (await response.json()) as T;
 
       } catch (error) {
@@ -774,6 +777,35 @@ export class BitbucketAPI {
     });
 
     return response;
+  }
+
+  async updatePullRequestComment(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    commentId: number,
+    content: string
+  ): Promise<Comment> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments/${commentId}`;
+
+    return this.makeRequest<Comment>(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ content: { raw: content } })
+    });
+  }
+
+  async deletePullRequestComment(
+    workspace: string,
+    repoSlug: string,
+    pullRequestId: number,
+    commentId: number
+  ): Promise<void> {
+    const url = `${BITBUCKET_API_BASE}/repositories/${workspace}/${repoSlug}/pullrequests/${pullRequestId}/comments/${commentId}`;
+
+    await this.makeRequest<void>(url, { method: 'DELETE' });
   }
 
   async createPullRequest(

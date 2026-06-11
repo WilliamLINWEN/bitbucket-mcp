@@ -161,6 +161,33 @@ export function buildPrCommand(globalOpts: PrCommandOptions): Command {
       emit(ctx(), c, () => `created comment #${c.id}: ${c.links.html.href}`);
     }));
 
+  comment.command("edit <id> <commentId>")
+    .description("Edit an existing comment on a pull request")
+    .requiredOption("-r, --repo <slug>", "Repository slug")
+    .requiredOption("-m, --message <text>", "New comment text (replaces the old content)")
+    .action(action(async (id: string, commentId: string, opts) => {
+      const c = await prCommentsCore.updatePrComment(createApiClient(), {
+        workspace: ws(), repo_slug: opts.repo,
+        pull_request_id: parseIntStrict(id, "pr id"),
+        comment_id: parseIntStrict(commentId, "comment id"),
+        content: opts.message,
+      });
+      emit(ctx(), c, () => `updated comment #${c.id}: ${c.links.html.href}`);
+    }));
+
+  comment.command("delete <id> <commentId>")
+    .description("Delete a comment on a pull request (Bitbucket soft-deletes; replies stay but lose their parent)")
+    .requiredOption("-r, --repo <slug>", "Repository slug")
+    .action(action(async (id: string, commentId: string, opts) => {
+      const comment_id = parseIntStrict(commentId, "comment id");
+      await prCommentsCore.deletePrComment(createApiClient(), {
+        workspace: ws(), repo_slug: opts.repo,
+        pull_request_id: parseIntStrict(id, "pr id"),
+        comment_id,
+      });
+      emit(ctx(), { id: comment_id, deleted: true }, () => `deleted comment #${comment_id}`);
+    }));
+
   propagateExitOverride(cmd);
   return cmd;
 }
